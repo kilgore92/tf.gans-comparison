@@ -19,12 +19,18 @@ def _int64_features(value):
 def center_crop(im, output_size):
     output_height, output_width = output_size
     h, w = im.shape[:2]
+    short_edge = min(h,w)
     if h < output_height and w < output_width:
         raise ValueError("image is small")
 
-    offset_h = int((h - output_height) / 2)
-    offset_w = int((w - output_width) / 2)
-    return im[offset_h:offset_h+output_height, offset_w:offset_w+output_width, :]
+    offset_h = int((h - short_edge) / 2)
+    offset_w = int((w - short_edge) / 2)
+    center_crop =  im[offset_h:offset_h+short_edge, offset_w:offset_w+short_edge, :]
+    resized_crop = scipy.misc.imresize(center_crop,[output_width+18,output_height+18]) # Add some wiggle room
+    start_pixel = 10
+    end_pixel = output_width + 10 # Assuming that width and height are same !!
+    centered_image = resized_crop[start_pixel:end_pixel,start_pixel:end_pixel]
+    return centered_image
 
 
 def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=128, tfrecords_prefix=''):
@@ -90,6 +96,19 @@ def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=1
 
     writer.close()
 
+def test_crop_function(path):
+    """
+
+    Function to debug cropping behavior
+
+    """
+    im = scipy.misc.imread(path,mode='RGB')
+    scipy.misc.imsave('original.jpg',im)
+    out_size=[64,64]
+    crop = center_crop(im,output_size=out_size)
+    scipy.misc.imsave('crop.jpg',crop)
+    crop = scipy.misc.imresize(crop,out_size)
+    scipy.misc.imsave('center.jpg',crop)
 
 ''' Below function burrowed from https://github.com/fyu/lsun.
 Process: LMDB => images => tfrecords
