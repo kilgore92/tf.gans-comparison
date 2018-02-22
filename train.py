@@ -7,6 +7,7 @@ import glob, os, sys
 from argparse import ArgumentParser
 import utils, config
 import shutil
+import scipy.misc
 
 def build_parser():
     parser = ArgumentParser()
@@ -132,8 +133,7 @@ def train(model, dataset, sample_dir,input_op, num_epochs, batch_size, n_example
 
                     if global_step % ckpt_step == 0:
                         saver.save(sess, ckpt_path+'/'+model.name, global_step=global_step)
-                        # Save a sample
-                        save_samples(sess=sess,val_z = val_z ,model=model,dir_name = sample_dir,global_step=global_step)
+                        save_samples(sess=sess,val_z = val_z ,model=model,dir_name = sample_dir,global_step=global_step,shape=[16,8])
 
         except tf.errors.OutOfRangeError:
             print('\nDone -- epoch limit reached\n')
@@ -144,16 +144,16 @@ def train(model, dataset, sample_dir,input_op, num_epochs, batch_size, n_example
         summary_writer.close()
         pbar.close()
 
-def save_samples(sess,val_z,model,dir_name,global_step):
+def save_samples(sess,val_z,model,dir_name,global_step,shape):
     """
     Function to save samples during training
+
     """
     fake_samples = sess.run(model.fake_sample, {model.z: val_z})
-    sample_shape = [4,4]
-    merged_samples = utils.merge(fake_samples, size=sample_shape)
+    fake_samples = (fake_samples + 1.) / 2.
+    merged_samples = utils.merge(fake_samples, size=shape)
     fn = "{:0>6d}.png".format(global_step)
     scipy.misc.imsave(os.path.join(dir_name, fn), merged_samples)
-
 
 if __name__ == "__main__":
     parser = build_parser()

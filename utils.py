@@ -144,7 +144,6 @@ def merge(images, size):
     else:
         raise ValueError('in merge(images,size) images parameter must have dimensions: HxW or HxWx3 or HxWx4')
 
-
 '''Sugar for gradients histograms
 # D_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1, beta2=self.beta2).\
 #     minimize(D_loss, var_list=D_vars)
