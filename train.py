@@ -126,6 +126,9 @@ def train(model, dataset, sample_dir,input_op, num_epochs, batch_size, n_example
 
                 if global_step % 10 == 0:
                     pbar.update(10)
+                    #Monitor losses
+                    G_loss,D_loss = sess.run([model.G_loss,model.D_loss],feed_dict={model.X:batch_X,model.z:batch_z})
+                    print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
 
                     if global_step % ckpt_step == 0:
                         saver.save(sess, ckpt_path+'/'+model.name, global_step=global_step)

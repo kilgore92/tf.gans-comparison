@@ -65,6 +65,8 @@ class DCGAN(BaseModel):
             self.z = z
             self.D_train_op = D_train_op
             self.G_train_op = G_train_op
+            self.G_loss = G_loss
+            self.D_loss = D_loss
             self.fake_sample = G
             self.global_step = global_step
 
