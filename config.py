@@ -36,7 +36,7 @@ def get_dataset(dataset_name):
 
     if dataset_name == 'celeba':
         path = celebA_64
-        n_examples = 202599
+        n_examples = 201599 #1000 images held out for testing
     elif dataset_name == 'lsun':
         path = lsun_bedroom_128
         n_examples = 3033042
