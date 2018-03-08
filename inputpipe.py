@@ -17,8 +17,8 @@ def read_parse_preproc(filename_queue):
         )
 
         image = tf.decode_raw(features["image"], tf.uint8)
-        image = tf.reshape(image, [64, 64, 3]) # The image_shape must be explicitly specified
-        image = tf.image.resize_images(image, [64, 64])
+        image = tf.reshape(image, [128, 128, 3]) # The image_shape must be explicitly specified
+        image = tf.image.resize_images(image, [128, 128])
         image = tf.cast(image, tf.float32)
         image = image / 127.5 - 1.0 # preproc - normalize
 

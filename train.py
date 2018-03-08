@@ -19,6 +19,7 @@ def build_parser():
     parser.add_argument('--model', help=models_str, required=True) # DRAGAN, CramerGAN
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
+    parser.add_argument('--image_size',default=64,required=True)
     parser.add_argument('--ckpt_step', default=5000, help='# of steps for saving checkpoint (default: 5000)', type=int)
     parser.add_argument('--renew', action='store_true', help='train model from scratch - \
         clean saved checkpoints and summaries', default=False)
@@ -59,7 +60,7 @@ def train(model, dataset, sample_dir,input_op, num_epochs, batch_size, n_example
     os.makedirs(sample_dir)
 
     config = tf.ConfigProto()
-    config.gpu_options.visible_device_list = "1" # Works same as CUDA_VISIBLE_DEVICES!
+    config.gpu_options.visible_device_list = "0" # Works same as CUDA_VISIBLE_DEVICES!
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer()) # for epochs
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     # input pipeline
     X = input_pipeline(dataset_pattern, batch_size=FLAGS.batch_size,
         num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs)
-
-    model = config.get_model(FLAGS.model, FLAGS.name, training=True)
+    image_shape = [int(FLAGS.image_size),int(FLAGS.image_size),3]
+    model = config.get_model(FLAGS.model, FLAGS.name, training=True,shape=image_shape)
     train(model=model, dataset=FLAGS.dataset, sample_dir = FLAGS.sample_dir,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
         n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew)

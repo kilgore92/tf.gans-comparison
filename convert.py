@@ -104,7 +104,7 @@ def test_crop_function(path):
     """
     im = scipy.misc.imread(path,mode='RGB')
     scipy.misc.imsave('original.jpg',im)
-    out_size=[64,64]
+    out_size=[128,128]
     crop = center_crop(im,output_size=out_size)
     scipy.misc.imsave('crop.jpg',crop)
     crop = scipy.misc.imresize(crop,out_size)
@@ -141,11 +141,11 @@ def export_images(db_path, out_dir, flat=False, limit=-1):
 
 if __name__ == "__main__":
     # CelebA
-    convert('/home/ibhat/image_completion/dcgan-completion.tensorflow/data/celebA', './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
-        exts=['jpg'], num_shards=128, tfrecords_prefix='celebA')
+    #convert('/home/ibhat/image_completion/dcgan-completion.tensorflow/data/celebA', './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
+    #    exts=['jpg'], num_shards=128, tfrecords_prefix='celebA')
 
-    # LSUN
-    # export_images('./tf.gans-comparison/data/lsun/bedroom_val_lmdb/',
-    #     './tf.gans-comparison/data/lsun/bedroom_val_images/', flat=True)
-    # convert('./data/lsun/bedroom_train_images', './data/lsun/bedroom_128_tfrecords', crop_size=[128, 128],
-    #     out_size=[128, 128], exts=['webp'], num_shards=128, tfrecords_prefix='lsun_bedroom')
+     #LSUN
+     #export_images('./tf.gans-comparison/data/lsun/bedroom_val_lmdb/',
+     #    './tf.gans-comparison/data/lsun/bedroom_val_images/', flat=True)
+     convert('/home/ibhat/lsun/lsun/images', './data/lsun/bedroom_128_tfrecords', crop_size=[128, 128],
+         out_size=[128, 128], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')
