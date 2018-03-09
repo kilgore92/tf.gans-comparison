@@ -27,10 +27,9 @@ def build_parser():
     return parser
 
 
-def input_pipeline(glob_pattern, batch_size, num_threads, num_epochs):
+def input_pipeline(glob_pattern, batch_size, num_threads, num_epochs,image_size):
     tfrecords_list = glob.glob(glob_pattern)
-    # num_examples = utils.num_examples_from_tfrecords(tfrecords_list) # takes too long time for lsun
-    X = ip.shuffle_batch_join(tfrecords_list, batch_size=batch_size, num_threads=num_threads, num_epochs=num_epochs)
+    X = ip.shuffle_batch_join(tfrecords_list, batch_size=batch_size, num_threads=num_threads, num_epochs=num_epochs,image_size=image_size)
     return X
 
 
@@ -169,8 +168,9 @@ if __name__ == "__main__":
     dataset_pattern, n_examples = config.get_dataset(FLAGS.dataset)
     # input pipeline
     X = input_pipeline(dataset_pattern, batch_size=FLAGS.batch_size,
-        num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs)
-    image_shape = [int(FLAGS.image_size),int(FLAGS.image_size),3]
-    model = config.get_model(FLAGS.model, FLAGS.name, training=True,shape=image_shape)
+        num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs,image_size = int(FLAGS.image_size))
+    # Arbitrarily sized crops will be resized to 64x64x3. Model will be constructed accordingly
+    resized_image_shape = [64,64,3]
+    model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape)
     train(model=model, dataset=FLAGS.dataset, sample_dir = FLAGS.sample_dir,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
         n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew)
