@@ -33,7 +33,7 @@ def center_crop(im, output_size):
     return centered_image
 
 
-def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=128, tfrecords_prefix=''):
+def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=128, tfrecords_prefix='',crop=True):
     if not tf.gfile.Exists(source_dir):
         print('source_dir does not exists')
         return
@@ -79,13 +79,14 @@ def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=1
         # mode='RGB' read even grayscale image as RGB shape
         im = scipy.misc.imread(path, mode='RGB')
         # preproc
-        try:
-            im = center_crop(im, crop_size)
-        except Exception as e:
-            # print("im_path: {}".format(path))
-            # print("im_shape: {}".format(im.shape))
-            print("[Exception] {}".format(e))
-            continue
+        if crop is True:
+            try:
+                im = center_crop(im, crop_size)
+            except Exception as e:
+                # print("im_path: {}".format(path))
+                # print("im_shape: {}".format(im.shape))
+                print("[Exception] {}".format(e))
+                continue
 
         im = scipy.misc.imresize(im, out_size)
         example = tf.train.Example(features=tf.train.Features(feature={
@@ -141,11 +142,11 @@ def export_images(db_path, out_dir, flat=False, limit=-1):
 
 if __name__ == "__main__":
     # CelebA
-    #convert('/home/ibhat/image_completion/dcgan-completion.tensorflow/data/celebA', './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
-    #    exts=['jpg'], num_shards=128, tfrecords_prefix='celebA')
+    convert('/home/ibhat/datasets/celebA_align', './data/celebA_tfrecords_align', crop_size=[64, 64], out_size=[64, 64],
+        exts=['png'], num_shards=128, tfrecords_prefix='celebA',crop=False)
 
      #LSUN
      #export_images('./tf.gans-comparison/data/lsun/bedroom_val_lmdb/',
      #    './tf.gans-comparison/data/lsun/bedroom_val_images/', flat=True)
-     convert('/home/ibhat/lsun/lsun/images', './data/lsun/bedroom_128_tfrecords', crop_size=[128, 128],
-         out_size=[128, 128], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')
+     #convert('/home/ibhat/lsun/lsun/images', './data/lsun/bedroom_128_tfrecords', crop_size=[128, 128],
+     #    out_size=[128, 128], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')

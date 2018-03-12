@@ -30,8 +30,7 @@ def get_model(mtype, name, training,image_shape=[64,64,3]):
 
 
 def get_dataset(dataset_name):
-    celebA_64 = './data/celebA_tfrecords/*.tfrecord'
-    celebA_128 = './data/celebA_128_tfrecords/*.tfrecord'
+    celebA_64 = './data/celebA_tfrecords_align/*.tfrecord'
     lsun_bedroom_128 = './data/lsun/bedroom_128_tfrecords/*.tfrecord'
 
     if dataset_name == 'celeba':
