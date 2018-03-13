@@ -69,6 +69,20 @@ class DCGAN(BaseModel):
             self.fake_sample = G
             self.global_step = global_step
 
+            # Image In-painting
+            self.mask = tf.placeholder(tf.float32, self.shape, name='mask')
+            self.lam = 0.003 # Value taken from paper
+
+            # Reduce the difference in the masked part -- TODO : Add weighting term (from paper) to the mask*image product
+            self.contextual_loss = tf.reduce_sum(
+                tf.contrib.layers.flatten(
+                    tf.abs(tf.multiply(self.mask, self.fake_sample) - tf.multiply(self.mask, self.X))), 1)
+
+            # The reconstructed/completed image must also "fool" the discriminator
+            self.perceptual_loss = self.G_loss
+            self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
+            self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
+
     def _discriminator(self, X, reuse=False):
         with tf.variable_scope('D', reuse=reuse):
             net = X

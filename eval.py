@@ -48,7 +48,7 @@ def get_all_checkpoints(ckpt_dir, force=False):
 def eval(model, name, sample_dir,dataset, sample_shape=[4,4], load_all_ckpt=True):
     if name == None:
         name = model.name
-    if sample_dir = None:
+    if sample_dir == None:
         dir_name = os.path.join('eval', dataset, name)
     else:
         dir_name = os.path.join(sample_dir,dataset,name)
