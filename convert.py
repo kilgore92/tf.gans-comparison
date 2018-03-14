@@ -78,6 +78,9 @@ def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=1
 
         # mode='RGB' read even grayscale image as RGB shape
         im = scipy.misc.imread(path, mode='RGB')
+        im = np.array(im).astype(np.float32)
+        #Normalize inputs -- https://github.com/soumith/ganhacks
+        im = im/127.5 - 1
         # preproc
         if crop is True:
             try:
@@ -142,8 +145,8 @@ def export_images(db_path, out_dir, flat=False, limit=-1):
 
 if __name__ == "__main__":
     # CelebA
-    convert('/home/ibhat/datasets/celebA_align', './data/celebA_tfrecords_align', crop_size=[64, 64], out_size=[64, 64],
-        exts=['png'], num_shards=128, tfrecords_prefix='celebA',crop=False)
+    convert('/home/ibhat/datasets/celebA', './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
+        exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
 
      #LSUN
      #export_images('./tf.gans-comparison/data/lsun/bedroom_val_lmdb/',

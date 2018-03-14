@@ -150,7 +150,7 @@ def save_samples(sess,val_z,model,dir_name,global_step,shape):
 
     """
     fake_samples = sess.run(model.fake_sample, {model.z: val_z})
-    fake_samples = (fake_samples + 1.) / 2.
+    fake_samples = 255*((fake_samples + 1.) / 2.)
     merged_samples = utils.merge(fake_samples, size=shape)
     fn = "{:0>6d}.png".format(global_step)
     scipy.misc.imsave(os.path.join(dir_name, fn), merged_samples)
