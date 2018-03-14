@@ -54,7 +54,8 @@ def save_image(image,path):
 def complete(args):
     """
     Performs in-painting over images using a pre-trained
-    GAN model
+    GAN model : http://arxiv.org/abs/1607.07539
+
     """
 
 
@@ -102,7 +103,7 @@ def complete(args):
         # Load the checkpoint file into the model
         # Get the model
         # If Training is set to false, the discriminator ops graph is not built.
-        # This is needed for in-painting. Hacked it now, please FIX THIS - TODO
+        # The discriminator graph is used to compute the in-painting loss. Hacked it now, please FIX THIS - TODO
         model = config.get_model(args.model.upper(),args.model.lower(), training=True)
         restorer = tf.train.Saver()
 
@@ -126,6 +127,7 @@ def complete(args):
             batch_images = np.array(batch).astype(np.float32)
             masked_images = np.multiply(batch_images, mask)
             if batchSz < args.batch_size:
+                print(batchSz)
                 padSz = ((0, int(args.batch_size-batchSz)), (0,0), (0,0), (0,0))
                 batch_images = np.pad(batch_images, padSz, 'constant')
                 batch_images = batch_images.astype(np.float32)
@@ -136,7 +138,7 @@ def complete(args):
             m = 0
             v = 0
 
-            for file_idx in range(len(batch_files)):
+            for file_idx in range(len(batch_images)):
                 folder_idx = l + file_idx
                 outDir = os.path.join(args.outDir,'{}'.format(folder_idx))
                 os.makedirs(outDir) # Directory that stores real and masked images, different for each real image
