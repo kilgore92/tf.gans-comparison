@@ -88,8 +88,24 @@ class WGAN(BaseModel):
             self.z = z
             self.D_train_op = C_train_op # compatibility for train.py
             self.G_train_op = G_train_op
+            self.G_loss = G_loss
+            self.D_loss = C_loss
             self.fake_sample = G
             self.global_step = global_step
+
+            # Image In-painting
+            self.mask = tf.placeholder(tf.float32, self.shape, name='mask')
+            self.lam = 0.003 # Value taken from paper
+
+            # Reduce the difference in the masked part -- TODO : Add weighting term (from paper) to the mask*image product
+            self.contextual_loss = tf.reduce_sum(
+                tf.contrib.layers.flatten(
+                    tf.abs(tf.multiply(self.mask, self.fake_sample) - tf.multiply(self.mask, self.X))), 1)
+
+            # The reconstructed/completed image must also "fool" the discriminator
+            self.perceptual_loss = self.G_loss
+            self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
+            self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
 
     def _critic(self, X, reuse=False):
         ''' K-Lipschitz function '''
@@ -117,16 +133,18 @@ class WGAN(BaseModel):
             net = z
             net = slim.fully_connected(net, 4*4*1024, activation_fn=tf.nn.relu)
             net = tf.reshape(net, [-1, 4, 4, 1024])
+            filter_num = 512
+            input_size = 4
+            stride = 2
+            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, padding='SAME',
+                activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
+                while input_size < (self.shape[0]//stride):
+                    net = slim.conv2d_transpose(net, filter_num)
+                    expected_shape(net, [input_size*stride, input_size*stride, filter_num])
+                    filter_num = filter_num//2
+                    input_size = input_size*stride
 
-            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=2, activation_fn=tf.nn.relu,
-                normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
-                net = slim.conv2d_transpose(net, 512)
-                expected_shape(net, [8, 8, 512])
-                net = slim.conv2d_transpose(net, 256)
-                expected_shape(net, [16, 16, 256])
-                net = slim.conv2d_transpose(net, 128)
-                expected_shape(net, [32, 32, 128])
                 net = slim.conv2d_transpose(net, 3, activation_fn=tf.nn.tanh, normalizer_fn=None)
-                expected_shape(net, [64, 64, 3])
+                expected_shape(net, [self.shape[0], self.shape[1], 3])
 
                 return net
