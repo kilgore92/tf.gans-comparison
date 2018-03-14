@@ -9,6 +9,7 @@ import shutil
 import scipy.misc
 from eval import get_all_checkpoints
 from convert import center_crop
+import cv2
 slim = tf.contrib.slim
 
 def build_parser():
@@ -28,8 +29,34 @@ def build_parser():
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--eps', type=float, default=1e-8)
     parser.add_argument('--lr', type=float, default=0.005)
+    parser.add_argument('--blend',action='store_true',default=True)
 
     return parser
+
+
+def blend_images(image,gen_image,mask):
+    """
+    Blend generated patch into the masked image
+    using the OpenCV implementation of Poisson blending
+
+    """
+
+    gen_image = rescale_image(gen_image)
+    gen_image = np.array(gen_image,dtype = np.uint8)
+
+    image = rescale_image(image)
+    image = np.array(image,dtype = np.uint8)
+
+    mask = np.array(mask,dtype=np.uint8)
+
+    center = (image.shape[0]//2,image.shape[1]//2)
+
+    blended_image = cv2.seamlessClone(gen_image,image,mask,center,cv2.NORMAL_CLONE)
+    return blended_image
+
+def rescale_image(image):
+    image = 255*((image+1.)/2.)
+    return image
 
 def get_image_paths(image_dir):
     """
@@ -48,7 +75,6 @@ def read_image(image_path,image_shape):
     return (resized_image/127.5 - 1)
 
 def save_image(image,path):
-    image = 255*(image+1.)/2.
     scipy.misc.imsave(path,image)
 
 def complete(args):
@@ -160,11 +186,19 @@ def complete(args):
                 if i%100 == 0:
                     print('Batch : {}. Iteration : {}. Mean loss : {}'.format(idx,i, np.mean(loss[0:batchSz])))
                     inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
-                    completed = masked_images + inv_masked_hat_images
+                    if args.blend == True:
+                        completed = []
+                        for img,indx in zip(G_imgs,range(len(G_imgs))):
+                            completed.append(blend_images(image = batch_images[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
+                        completed = np.asarray(completed)
+                    else:
+                        completed = masked_images + inv_masked_hat_images
                     # Save all in-painted images of this iteration in their respective image folders
                     for  image_idx in range(len(completed)):
                         folder_idx = l + image_idx
                         save_path = os.path.join(args.outDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
+                        if args.blend is False:
+                            completed[image_idx,:,:,:] = rescale_image(completed[image_idx,:,:,:])
                         save_image(image=completed[image_idx,:,:,:],path=save_path)
 
                 # Adam implementation
