@@ -21,8 +21,7 @@ def build_parser():
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--images', '-D', help='Path to folder containing images', required=True)
     parser.add_argument('--image_size',default=64,type = int)
-    parser.add_argument('--outDir', '-O', help='Output folder for in-painted images', required=True)
-    parser.add_argument('--checkpoint_dir',help='Path to folder with pre-trained GAN',required=True)
+    parser.add_argument('--dataset',help='Name of dataset on which inpainting is done',default='celeba',required='true')
     parser.add_argument('--maskType',help='center/left/right/random',default='center')
     parser.add_argument('--nIter',help='Number of iteration to perform for each in-painting',default=1500,type=int)
     parser.add_argument('--beta1', type=float, default=0.9)
@@ -93,6 +92,13 @@ def complete(args):
 
     batch_idxs = int(np.ceil(nImgs/args.batch_size))
 
+    dumpDir = os.path.join(os.getcwd(),'completions',args.model.lower(),args.dataset.lower())
+
+    if os.path.exists(dumpDir):
+        shutil.rmtree(dumpDir)
+    os.makedirs(dumpDir)
+
+
     if args.maskType == 'random':
         fraction_masked = 0.2
         mask = np.ones(image_shape)
@@ -133,16 +139,14 @@ def complete(args):
         model = config.get_model(args.model.upper(),args.model.lower(), training=True)
         restorer = tf.train.Saver()
 
-        ckpt = tf.train.get_checkpoint_state(args.checkpoint_dir)
+        checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',args.dataset.lower(),args.model.lower())
+        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
             restorer.restore(sess, ckpt.model_checkpoint_path)
         else:
             print('Invalid checkpoint directory')
             assert(False)
 
-        if os.path.exists(args.outDir) is True:
-            shutil.rmtree(args.outDir)
-        os.makedirs(args.outDir)
 
         for idx in range(0, batch_idxs):
             l = idx*args.batch_size
@@ -166,7 +170,7 @@ def complete(args):
 
             for file_idx in range(len(batch_images)):
                 folder_idx = l + file_idx
-                outDir = os.path.join(args.outDir,'{}'.format(folder_idx))
+                outDir = os.path.join(dumpDir,'{}'.format(folder_idx))
                 os.makedirs(outDir) # Directory that stores real and masked images, different for each real image
                 genDir = os.path.join(outDir,'gen_images') # Directory that stores iterations of in-paintings
                 os.makedirs(genDir)
@@ -196,7 +200,7 @@ def complete(args):
                     # Save all in-painted images of this iteration in their respective image folders
                     for  image_idx in range(len(completed)):
                         folder_idx = l + image_idx
-                        save_path = os.path.join(args.outDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
+                        save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
                         if args.blend is False:
                             completed[image_idx,:,:,:] = rescale_image(completed[image_idx,:,:,:])
                         save_image(image=completed[image_idx,:,:,:],path=save_path)
