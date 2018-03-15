@@ -16,7 +16,7 @@ class DRAGAN(BaseModel):
         self.beta2 = 0.9
         self.ld = 10. # lambda
         self.C = 0.5
-        super(DRAGAN, self).__init__(name=name, training=training, D_lr=D_lr, G_lr=G_lr, 
+        super(DRAGAN, self).__init__(name=name, training=training, D_lr=D_lr, G_lr=G_lr,
             image_shape=image_shape, z_dim=z_dim)
 
     def _build_train_graph(self):
@@ -45,7 +45,7 @@ class DRAGAN(BaseModel):
             noise = self.C*x_std*eps # delta in paper
             # Author suggested U[0,1] in original paper, but he admitted it is bug in github
             # (https://github.com/kodalinaveen3/DRAGAN). It should be two-sided.
-            alpha = tf.random_uniform(shape=[shape[0], 1, 1, 1], minval=-1., maxval=1.) 
+            alpha = tf.random_uniform(shape=[shape[0], 1, 1, 1], minval=-1., maxval=1.)
             xhat = tf.clip_by_value(X + alpha*noise, -1., 1.) # x_hat should be in the space of X
 
             D_xhat_prob, D_xhat_logits = self._discriminator(xhat, reuse=True)
@@ -83,17 +83,33 @@ class DRAGAN(BaseModel):
             # accesible points
             self.X = X
             self.z = z
-            self.D_train_op = D_train_op 
+            self.D_train_op = D_train_op
             self.G_train_op = G_train_op
+            self.G_loss = G_loss
+            self.D_loss = D_loss
             self.fake_sample = G
             self.global_step = global_step
+
+            # Image In-painting
+            self.mask = tf.placeholder(tf.float32, self.shape, name='mask')
+            self.lam = 0.003 # Value taken from paper
+
+            # Reduce the difference in the masked part -- TODO : Add weighting term (from paper) to the mask*image product
+            self.contextual_loss = tf.reduce_sum(
+                tf.contrib.layers.flatten(
+                    tf.abs(tf.multiply(self.mask, self.fake_sample) - tf.multiply(self.mask, self.X))), 1)
+
+            # The reconstructed/completed image must also "fool" the discriminator
+            self.perceptual_loss = self.G_loss
+            self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
+            self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
 
     # DRAGAN does not use BN
     # DCGAN architecture
     def _discriminator(self, X, reuse=False):
         with tf.variable_scope('discriminator', reuse=reuse):
             net = X
-            
+
             with slim.arg_scope([slim.conv2d], kernel_size=[5,5], stride=2, activation_fn=ops.lrelu):
                 net = slim.conv2d(net, 64)
                 expected_shape(net, [32, 32, 64])
@@ -115,15 +131,17 @@ class DRAGAN(BaseModel):
             net = z
             net = slim.fully_connected(net, 4*4*1024, activation_fn=tf.nn.relu)
             net = tf.reshape(net, [-1, 4, 4, 1024])
+            filter_num = 512
+            input_size = 4
+            stride = 2
 
-            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=2, activation_fn=tf.nn.relu):
-                net = slim.conv2d_transpose(net, 512)
-                expected_shape(net, [8, 8, 512])
-                net = slim.conv2d_transpose(net, 256)
-                expected_shape(net, [16, 16, 256])
-                net = slim.conv2d_transpose(net, 128)
-                expected_shape(net, [32, 32, 128])
+            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, activation_fn=tf.nn.relu):
+
+                while input_size < (self.shape[0]//stride):
+                    net = slim.conv2d_transpose(net, filter_num)
+                    expected_shape(net, [input_size*stride, input_size*stride, filter_num])
+                    filter_num = filter_num//2
+                    input_size = input_size*stride
                 net = slim.conv2d_transpose(net, 3, activation_fn=tf.nn.tanh, normalizer_fn=None)
-                expected_shape(net, [64, 64, 3])
-
+                expected_shape(net, [self.shape[0], self.shape[1], 3])
                 return net
