@@ -14,7 +14,6 @@ def build_parser():
     parser.add_argument('--num_epochs', default=20, help='default: 20', type=int)
     parser.add_argument('--batch_size', default=128, help='default: 128', type=int)
     parser.add_argument('--num_threads', default=4, help='# of data read threads (default: 4)', type=int)
-    parser.add_argument('--sample_dir',default='sample_dir')
     models_str = ' / '.join(config.model_zoo)
     parser.add_argument('--model', help=models_str, required=True) # DRAGAN, CramerGAN
     parser.add_argument('--name', help='default: name=model')
@@ -37,7 +36,7 @@ def sample_z(shape):
     return np.random.normal(size=shape)
 
 
-def train(model, dataset, sample_dir,input_op, num_epochs, batch_size, n_examples, ckpt_step, renew=False):
+def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step, renew=False):
     # n_examples = 202599 # same as util.num_examples_from_tfrecords(glob.glob('./data/celebA_tfrecords/*.tfrecord'))
     # 1 epoch = 1583 steps
     print("\n# of examples: {}".format(n_examples))
@@ -53,6 +52,7 @@ def train(model, dataset, sample_dir,input_op, num_epochs, batch_size, n_example
     if not os.path.exists(ckpt_path):
         tf.gfile.MakeDirs(ckpt_path)
 
+    sample_dir = os.path.join(os.getcwd(),'samples',dataset.lower(),model.name)
     if os.path.exists(sample_dir):
         shutil.rmtree(sample_dir)
 
@@ -172,5 +172,5 @@ if __name__ == "__main__":
     # Arbitrarily sized crops will be resized to 64x64x3. Model will be constructed accordingly
     resized_image_shape = [64,64,3]
     model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape)
-    train(model=model, dataset=FLAGS.dataset, sample_dir = FLAGS.sample_dir,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
+    train(model=model, dataset=FLAGS.dataset,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
         n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew)
