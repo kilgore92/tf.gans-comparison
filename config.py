@@ -21,6 +21,10 @@ def get_model(mtype, name, training,image_shape=[64,64,3]):
         model = dragan.DRAGAN
     elif mtype == 'COULOMBGAN':
         model = coulombgan.CoulombGAN
+    elif mtype == 'DCGAN-GP':
+        model = dcgan_gp.DCGAN_GP
+    elif mtype == 'WGAN-DRAGAN':
+        model = wgan_dragan.WGAN_DRAGAN
     else:
         assert False, mtype + ' is not in the model zoo'
 
