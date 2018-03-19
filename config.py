@@ -25,6 +25,8 @@ def get_model(mtype, name, training,image_shape=[64,64,3]):
         model = dcgan_gp.DCGAN_GP
     elif mtype == 'WGAN-DRAGAN':
         model = wgan_dragan.WGAN_DRAGAN
+    elif mtype == 'DCGAN-CONS':
+        model = dcgan_consensus.DCGAN_CONS
     else:
         assert False, mtype + ' is not in the model zoo'
 
