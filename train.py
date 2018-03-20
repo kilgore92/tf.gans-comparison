@@ -22,7 +22,7 @@ def build_parser():
     parser.add_argument('--ckpt_step', default=5000, help='# of steps for saving checkpoint (default: 5000)', type=int)
     parser.add_argument('--renew', action='store_true', help='train model from scratch - \
         clean saved checkpoints and summaries', default=False)
-
+    parser.add_argument('--simultaneous', action='store_true', help='Choose between alternate GD and simultaeneous GD', default=False)
     return parser
 
 
@@ -36,7 +36,7 @@ def sample_z(shape):
     return np.random.normal(size=shape)
 
 
-def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step, renew=False):
+def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step, renew=False,simultaneous = False):
     # n_examples = 202599 # same as util.num_examples_from_tfrecords(glob.glob('./data/celebA_tfrecords/*.tfrecord'))
     # 1 epoch = 1583 steps
     print("\n# of examples: {}".format(n_examples))
@@ -120,8 +120,11 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                 batch_X = sess.run(input_op)
                 batch_z = sample_z([batch_size, model.z_dim])
 
-                _, summary = sess.run([model.D_train_op, summary_op], {model.X: batch_X, model.z: batch_z})
-                _, global_step = sess.run([model.G_train_op, model.global_step], {model.X: batch_X, model.z: batch_z})
+                if simultaneous is False:
+                    _, summary = sess.run([model.D_train_op, summary_op], {model.X: batch_X, model.z: batch_z})
+                    _, global_step = sess.run([model.G_train_op, model.global_step], {model.X: batch_X, model.z: batch_z})
+                else:
+                    _,_,summary,global_step = sess.run([model.D_train_op,model.G_train_op,summary_op,model.global_step], {model.X: batch_X, model.z: batch_z})
 
                 summary_writer.add_summary(summary, global_step=global_step)
 
@@ -173,4 +176,4 @@ if __name__ == "__main__":
     resized_image_shape = [64,64,3]
     model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape)
     train(model=model, dataset=FLAGS.dataset,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
-        n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew)
+        n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew,simultaneous = FLAGS.simultaneous)

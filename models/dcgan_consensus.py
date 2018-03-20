@@ -11,8 +11,7 @@ init - stddev 0.02
 '''
 
 class DCGAN_CONS(BaseModel):
-    def __init__(self, name, training, D_lr=2e-4, G_lr=2e-4, image_shape=[64, 64, 3], z_dim=100):
-        self.beta1 = 0.5
+    def __init__(self, name, training, D_lr=1e-4, G_lr=1e-4, image_shape=[64, 64, 3], z_dim=100):
         super(DCGAN_CONS, self).__init__(name=name, training=training, D_lr=D_lr, G_lr=G_lr,
             image_shape=image_shape, z_dim=z_dim)
 
@@ -37,28 +36,26 @@ class DCGAN_CONS(BaseModel):
             # Consensus Optimization Regularization term -- Calculated for per-batch loss
             gamma = 10
 
-            D_grad = tf.gradients(ys = D_loss, xs = D_vars)[0] # gradient of D_loss
-            D_grad_norm = tf.norm(slim.flatten(D_grad), axis=None)  # l2 norm
-            D_norm_square = tf.square(D_grad_norm)
-            G_grad = tf.gradients(G_loss, G_vars)[0] # gradient of D_loss
-            G_grad_norm = tf.norm(slim.flatten(G_grad),axis=None)
-            G_norm_square = tf.square(G_grad_norm)
+            # D_loss/G_loss is already the average loss over the batch.
+            D_grad = tf.gradients(ys = D_loss, xs = D_vars) # gradient of D_loss
+            G_grad = tf.gradients(ys = G_loss,xs = G_vars) # gradient of G_loss
+            D_grad_sq = sum([tf.reduce_sum(tf.square(g)) for g in D_grad])
+            G_grad_sq = sum([tf.reduce_sum(tf.square(g)) for g in G_grad])
+            L_reg = D_grad_sq + G_grad_sq
 
-            L_reg = D_norm_square + G_norm_square
+
             D_loss += gamma*L_reg
             G_loss += gamma*L_reg
 
 
-            # Simulataeneous GD
             D_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/D/')
             G_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/G/')
 
             with tf.control_dependencies(D_update_ops):
-                D_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
+                D_train_op = tf.train.RMSPropOptimizer(learning_rate=self.D_lr).\
                     minimize(D_loss, var_list=D_vars)
             with tf.control_dependencies(G_update_ops):
-                # learning rate 2e-4/1e-3
-                G_train_op = tf.train.AdamOptimizer(learning_rate=self.G_lr, beta1=self.beta1).\
+                G_train_op = tf.train.RMSPropOptimizer(learning_rate=self.G_lr).\
                     minimize(G_loss, var_list=G_vars, global_step=global_step)
 
             # summaries
