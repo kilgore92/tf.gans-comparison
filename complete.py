@@ -29,6 +29,7 @@ def build_parser():
     parser.add_argument('--eps', type=float, default=1e-8)
     parser.add_argument('--lr', type=float, default=0.005)
     parser.add_argument('--blend',action='store_true',default=True)
+    parser.add_argument('--clipping',type=str,help='Options: standard or stochastic',default='stochastic')
 
     return parser
 
@@ -92,7 +93,8 @@ def complete(args):
 
     batch_idxs = int(np.ceil(nImgs/args.batch_size))
 
-    dumpDir = os.path.join(os.getcwd(),'completions',args.model.lower(),args.dataset.lower())
+    folder_name = 'completions'+'_'+str(args.clipping)
+    dumpDir = os.path.join(os.getcwd(),folder_name,args.model.lower(),args.dataset.lower())
 
     if os.path.exists(dumpDir):
         shutil.rmtree(dumpDir)
@@ -125,7 +127,7 @@ def complete(args):
         assert(False)
 
     tf_config = tf.ConfigProto()
-    tf_config.gpu_options.visible_device_list = "0"
+    tf_config.gpu_options.visible_device_list = "1"
 
     with tf.Session(config=tf_config) as sess:
         try:
@@ -213,7 +215,19 @@ def complete(args):
                 m_hat = m / (1 - args.beta1 ** (i + 1))
                 v_hat = v / (1 - args.beta2 ** (i + 1))
                 zhats += - np.true_divide(args.lr * m_hat, (np.sqrt(v_hat) + args.eps))
-                zhats = np.clip(zhats, -1, 1)
+
+                if args.clipping == 'standard':
+                # Standard Clipping
+                    zhats = np.clip(zhats, -1, 1)
+                elif args.clipping == 'stochastic':
+                # Stochastic Clipping
+                    for batch_zhat,batch_id in zip(zhats,range(zhats.shape[0])):
+                        for elem,elem_id in zip(batch_zhat,range(batch_zhat.shape[0])):
+                            if elem > 1 or elem < -1:
+                                zhats[batch_id][elem_id] = np.random.uniform(-1,1) # FIXME : There has to be a less shitty way to modify an array in-place
+                else:
+                    print('Invalid clipping mode')
+                    assert(False)
 
 
 
