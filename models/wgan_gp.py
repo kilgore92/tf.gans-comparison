@@ -56,7 +56,7 @@ class WGAN_GP(BaseModel):
             n_critic = 5
             lr = 1e-4
             with tf.control_dependencies(C_update_ops):
-                C_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr*n_critic, beta1=self.beta1, beta2=self.beta2).\
+                C_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1, beta2=self.beta2).\
                     minimize(C_loss, var_list=C_vars)
             with tf.control_dependencies(G_update_ops):
                 G_train_op = tf.train.AdamOptimizer(learning_rate=self.G_lr, beta1=self.beta1, beta2=self.beta2).\

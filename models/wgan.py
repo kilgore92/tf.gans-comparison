@@ -43,7 +43,7 @@ class WGAN(BaseModel):
             # In the paper, critic networks has been trained n_critic times for each training step.
             # Here I adjust learning rate instead.
             with tf.control_dependencies(C_update_ops):
-                C_train_op = tf.train.RMSPropOptimizer(learning_rate=self.D_lr*self.n_critic).\
+                C_train_op = tf.train.RMSPropOptimizer(learning_rate=self.D_lr).\
                     minimize(C_loss, var_list=C_vars)
             with tf.control_dependencies(G_update_ops):
                 G_train_op = tf.train.RMSPropOptimizer(learning_rate=self.G_lr).\
