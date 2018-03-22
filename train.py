@@ -41,7 +41,6 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
     # 1 epoch = 1583 steps
     print("\n# of examples: {}".format(n_examples))
     print("steps per epoch: {}\n".format(n_examples//batch_size))
-
     n_critic = 5 # Critic training iterations per generator update for WGAN and WGAN-GP
 
     summary_path = os.path.join('./summary/', dataset, model.name)
@@ -123,7 +122,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                 batch_z = sample_z([batch_size, model.z_dim])
 
                 if simultaneous is False:
-                    if model.name == 'wgan' or model.name == 'wgan_gp':
+                    if model.name == 'wgan' or model.name == 'wgan-gp':
                         for step in range(n_critic): #Train critic till optimality for WGAN or WGAN-GP
                             _, summary = sess.run([model.D_train_op, summary_op], {model.X: batch_X, model.z: batch_z})
                     else:
