@@ -145,11 +145,11 @@ def export_images(db_path, out_dir, flat=False, limit=-1):
 
 if __name__ == "__main__":
     # CelebA
-    convert('/home/ibhat/datasets/celebA', './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
-        exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
+    #convert('/home/ibhat/datasets/celebA', './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
+    #    exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
 
      #LSUN
      #export_images('./tf.gans-comparison/data/lsun/bedroom_val_lmdb/',
      #    './tf.gans-comparison/data/lsun/bedroom_val_images/', flat=True)
-     #convert('/home/ibhat/lsun/lsun/images', './data/lsun/bedroom_128_tfrecords', crop_size=[128, 128],
-     #    out_size=[128, 128], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')
+     convert('/home/ibhat/datasets/lsun/lsun/images', './data/lsun/bedroom_64_tfrecords', crop_size=[64, 64],
+            out_size=[64, 64], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')

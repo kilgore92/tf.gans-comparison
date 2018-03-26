@@ -13,7 +13,7 @@ init - stddev 0.02
 class DCGAN_LOCAL(BaseModel):
     def __init__(self, name, training, D_lr=2e-4, G_lr=2e-4, image_shape=[64, 64, 3], z_dim=100):
         self.beta1 = 0.5
-        self.eta = 0.5
+        self.eta = 0.25
         super(DCGAN_LOCAL, self).__init__(name=name, training=training, D_lr=D_lr, G_lr=G_lr,
             image_shape=image_shape, z_dim=z_dim)
 
@@ -98,7 +98,7 @@ class DCGAN_LOCAL(BaseModel):
             stride = 2
             num_conv_layers = 4
             with slim.arg_scope([slim.conv2d], kernel_size=[5,5], stride=stride, padding='SAME', activation_fn=ops.lrelu,
-                normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
+                normalizer_fn=None, normalizer_params=self.bn_params):
                 for layer_num in range(1,num_conv_layers + 1):
                     if layer_num == 1: # No batch norm for the first convolution
                         net = slim.conv2d(net, filter_num, normalizer_fn=None)
@@ -124,7 +124,7 @@ class DCGAN_LOCAL(BaseModel):
             input_size = 4
             stride = 2
             with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, padding='SAME',
-                activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
+                activation_fn=tf.nn.relu, normalizer_fn=None, normalizer_params=self.bn_params):
                 while input_size < (self.shape[0]//stride):
                     net = slim.conv2d_transpose(net, filter_num)
                     expected_shape(net, [input_size*stride, input_size*stride, filter_num])
