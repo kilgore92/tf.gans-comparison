@@ -45,7 +45,8 @@ class DCGAN_CONS(BaseModel):
 
 
             D_loss += gamma*L_reg
-            G_loss += gamma*L_reg
+            # G_loss is used for the inpainting process, in-painting does not need the regularization term
+            G_loss_train = G_loss + gamma*L_reg
 
 
             D_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/D/')
@@ -56,12 +57,12 @@ class DCGAN_CONS(BaseModel):
                     minimize(D_loss, var_list=D_vars)
             with tf.control_dependencies(G_update_ops):
                 G_train_op = tf.train.RMSPropOptimizer(learning_rate=self.G_lr).\
-                    minimize(G_loss, var_list=G_vars, global_step=global_step)
+                    minimize(G_loss_train, var_list=G_vars, global_step=global_step)
 
             # summaries
             # per-step summary
             self.summary_op = tf.summary.merge([
-                tf.summary.scalar('G_loss', G_loss),
+                tf.summary.scalar('G_loss_train', G_loss_train),
                 tf.summary.scalar('D_loss', D_loss),
                 tf.summary.scalar('D_loss/real', D_loss_real),
                 tf.summary.scalar('D_loss/fake', D_loss_fake)
