@@ -60,7 +60,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
     os.makedirs(sample_dir)
 
     config = tf.ConfigProto()
-    config.gpu_options.visible_device_list = "0" # Works same as CUDA_VISIBLE_DEVICES!
+    config.gpu_options.visible_device_list = "1" # Works same as CUDA_VISIBLE_DEVICES!
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer()) # for epochs
@@ -97,7 +97,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         summary_writer = tf.summary.FileWriter(summary_path, flush_secs=30, graph=sess.graph)
         summary_writer.add_summary(model_config_summary)
         pbar = tqdm(total=total_steps, desc='global_step')
-        saver = tf.train.Saver(max_to_keep=9999) # save all checkpoints
+        saver = tf.train.Saver(max_to_keep=2) # save all checkpoints
         global_step = 0
 
         # Use a (fixed) validation z and keep checking images over the training loop to detect mode collapse/image quality
@@ -138,7 +138,11 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                     pbar.update(10)
                     #Monitor losses
                     G_loss,D_loss = sess.run([model.G_loss,model.D_loss],feed_dict={model.X:batch_X,model.z:batch_z})
-                    print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
+                    if model.name == 'dcgan-local':
+                        G_grad_sq,D_grad_sq = sess.run([model.G_grad_sq,model.D_grad_sq],feed_dict={model.X:batch_X,model.z:batch_z})
+                        print('Global Step {} :: Generator loss = {} Discriminator loss = {} G_grad_sq = {} D_grad_sq = {}'.format(global_step,G_loss,D_loss,G_grad_sq,D_grad_sq))
+                    else:
+                        print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
 
                     if global_step % ckpt_step == 0:
                         saver.save(sess, ckpt_path+'/'+model.name, global_step=global_step)

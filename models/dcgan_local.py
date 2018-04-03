@@ -37,7 +37,10 @@ class DCGAN_LOCAL(BaseModel):
             D_grad = tf.gradients(ys = D_loss, xs = D_vars) # gradient of D_loss
             D_grad_sq = sum([tf.reduce_sum(tf.square(g)) for g in D_grad])
 
-            G_loss += self.eta*D_grad_sq
+            G_grad = tf.gradients(ys = G_loss, xs = G_vars) # gradient of D_loss
+            G_grad_sq = sum([tf.reduce_sum(tf.square(g)) for g in G_grad])
+
+            #G_loss += self.eta*D_grad_sq
 
 
             D_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/D/')
@@ -75,6 +78,8 @@ class DCGAN_LOCAL(BaseModel):
             self.D_loss = D_loss
             self.fake_sample = G
             self.global_step = global_step
+            self.D_grad_sq = D_grad_sq
+            self.G_grad_sq = G_grad_sq
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')

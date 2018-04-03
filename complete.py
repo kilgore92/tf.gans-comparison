@@ -127,7 +127,7 @@ def complete(args):
         assert(False)
 
     tf_config = tf.ConfigProto()
-    tf_config.gpu_options.visible_device_list = "0"
+    tf_config.gpu_options.visible_device_list = "1"
 
     with tf.Session(config=tf_config) as sess:
         try:
