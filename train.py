@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 import utils, config
 import shutil
 import scipy.misc
+import pickle
 
 def build_parser():
     parser = ArgumentParser()
@@ -58,6 +59,8 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         shutil.rmtree(sample_dir)
 
     os.makedirs(sample_dir)
+    d_grad_norm = []
+    g_grad_norm = []
 
     config = tf.ConfigProto()
     config.gpu_options.visible_device_list = "1" # Works same as CUDA_VISIBLE_DEVICES!
@@ -139,8 +142,10 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                     #Monitor losses
                     G_loss,D_loss = sess.run([model.G_loss,model.D_loss],feed_dict={model.X:batch_X,model.z:batch_z})
                     if model.name == 'dcgan-local':
-                        G_grad_sq,D_grad_sq = sess.run([model.G_grad_sq,model.D_grad_sq],feed_dict={model.X:batch_X,model.z:batch_z})
-                        print('Global Step {} :: Generator loss = {} Discriminator loss = {} G_grad_sq = {} D_grad_sq = {}'.format(global_step,G_loss,D_loss,G_grad_sq,D_grad_sq))
+                        G_grad_norm,D_grad_norm = sess.run([model.G_grad_sq,model.D_grad_sq],feed_dict={model.X:batch_X,model.z:batch_z})
+                        print('Global Step {} :: Generator loss = {} Discriminator loss = {} Average G grad norm : {} Average D grad norm : {}'.format(global_step,G_loss,D_loss,G_grad_norm,D_grad_norm))
+                        d_grad_norm.append(D_grad_norm)
+                        g_grad_norm.append(G_grad_norm)
                     else:
                         print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
 
@@ -151,6 +156,14 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         except tf.errors.OutOfRangeError:
             print('\nDone -- epoch limit reached\n')
         finally:
+            # Study the trend of gradient norms over the iterations
+            grads = {}
+            grads['Discrminator'] = d_grad_norm
+            grads['Generator'] = g_grad_norm
+            save_file = os.path.join(ckpt_path,'grads.pkl')
+            with open(save_file,'wb') as f:
+                pickle.dump(grads,f)
+
             coord.request_stop()
 
         coord.join(threads)

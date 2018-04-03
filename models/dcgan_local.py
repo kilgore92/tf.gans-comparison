@@ -5,6 +5,7 @@ from utils import expected_shape
 import ops
 from basemodel import BaseModel
 import math
+import numpy as np
 '''Original hyperparams:
 optimizer - SGD
 init - stddev 0.02
@@ -35,10 +36,12 @@ class DCGAN_LOCAL(BaseModel):
             G_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name+'/G/')
 
             D_grad = tf.gradients(ys = D_loss, xs = D_vars) # gradient of D_loss
-            D_grad_sq = sum([tf.reduce_sum(tf.square(g)) for g in D_grad])
+            D_grad_sq_sum = [tf.reduce_sum(tf.square(g)) for g in D_grad] # List of layer-wise 'sum of squares'
+            D_avg_sq_norm = sum(D_grad_sq_sum)/len(D_grad_sq_sum) # Avg norm
 
             G_grad = tf.gradients(ys = G_loss, xs = G_vars) # gradient of D_loss
-            G_grad_sq = sum([tf.reduce_sum(tf.square(g)) for g in G_grad])
+            G_grad_sq_sum = [tf.reduce_sum(tf.square(g)) for g in G_grad]
+            G_avg_sq_norm = sum(G_grad_sq_sum)/len(G_grad_sq_sum)
 
             #G_loss += self.eta*D_grad_sq
 
@@ -78,8 +81,8 @@ class DCGAN_LOCAL(BaseModel):
             self.D_loss = D_loss
             self.fake_sample = G
             self.global_step = global_step
-            self.D_grad_sq = D_grad_sq
-            self.G_grad_sq = G_grad_sq
+            self.D_grad_sq = D_avg_sq_norm
+            self.G_grad_sq = G_avg_sq_norm
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')
