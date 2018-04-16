@@ -22,7 +22,7 @@ def build_parser():
     parser.add_argument('--images', '-D', help='Path to folder containing images', required=True)
     parser.add_argument('--image_size',default=64,type = int)
     parser.add_argument('--dataset',help='Name of dataset on which inpainting is done',default='celeba',required='true')
-    parser.add_argument('--maskType',help='center/left/right/random',default='center')
+    parser.add_argument('--maskType',help='center/left/right/random/bottom',default='center')
     parser.add_argument('--nIter',help='Number of iteration to perform for each in-painting',default=1500,type=int)
     parser.add_argument('--beta1', type=float, default=0.9)
     parser.add_argument('--beta2', type=float, default=0.999)
@@ -93,7 +93,7 @@ def complete(args):
 
     batch_idxs = int(np.ceil(nImgs/args.batch_size))
 
-    folder_name = 'completions'+'_'+str(args.clipping)
+    folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(args.maskType)
     dumpDir = os.path.join(os.getcwd(),folder_name,args.model.lower(),args.dataset.lower())
 
     if os.path.exists(dumpDir):
@@ -122,6 +122,11 @@ def complete(args):
     elif args.maskType == 'grid':
         mask = np.zeros(image_shape)
         mask[::4,::4,:] = 1.0
+    elif args.maskType == 'bottom':
+        mask = np.ones(image_shape)
+        bottom_half = int(args.image_size/2)
+        mask[bottom_half:args.image_size,:,:] = 0.0
+
     else:
         print('Invalid mask type provided')
         assert(False)
@@ -192,7 +197,7 @@ def complete(args):
                 if i%100 == 0:
                     print('Batch : {}. Iteration : {}. Mean loss : {}'.format(idx,i, np.mean(loss[0:batchSz])))
                     inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
-                    if args.blend == True:
+                    if args.blend == True and args.maskType == 'center':
                         completed = []
                         for img,indx in zip(G_imgs,range(len(G_imgs))):
                             completed.append(blend_images(image = batch_images[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))

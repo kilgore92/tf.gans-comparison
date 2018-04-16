@@ -158,7 +158,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         finally:
             # Study the trend of gradient norms over the iterations
             grads = {}
-            grads['Discrminator'] = d_grad_norm
+            grads['Discriminator'] = d_grad_norm
             grads['Generator'] = g_grad_norm
             save_file = os.path.join(ckpt_path,'grads.pkl')
             with open(save_file,'wb') as f:
