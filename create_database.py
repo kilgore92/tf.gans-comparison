@@ -37,6 +37,9 @@ def create_database():
         original_image = os.path.join(source_dirs[0],'{}'.format(idx),'original.jpg') # Copy the image from one of the source directories
         # Copy over the original image
         shutil.copy2(original_image,curr_out_dir)
+        # Copy over the masked image
+        masked_image = os.path.join(source_dirs[0],'{}'.format(idx),'masked.jpg') # Copy the image from one of the source directories
+        shutil.copy2(masked_image,curr_out_dir)
 
         # Make the sub-folder
         genDir = os.path.join(curr_out_dir,'gen')

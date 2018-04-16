@@ -35,6 +35,8 @@ def build_parser():
 
 
 def blend_images(image,gen_image,mask):
+    # TODO : Re-factor code to enable blending for non-center masks
+
     """
     Blend generated patch into the masked image
     using the OpenCV implementation of Poisson blending
