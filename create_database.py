@@ -14,6 +14,7 @@ def create_database():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--outDir',type=str,default = 'database')
+    parser.add_argument('--rootDir',type=str,default='completions_stochastic')
     parser.add_argument('--dataset',type=str,default = 'celeba')
     parser.add_argument('--nImages',type=int,default=1000)
     args = parser.parse_args()
@@ -27,7 +28,7 @@ def create_database():
     models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan']
     source_dirs = []
     for model in models:
-        dir_path = os.path.join(os.getcwd(),'completions_stochastic',str(model),str(args.dataset))
+        dir_path = os.path.join(os.getcwd(),str(args.rootDir),str(model),str(args.dataset))
         source_dirs.append(dir_path)
 
 
