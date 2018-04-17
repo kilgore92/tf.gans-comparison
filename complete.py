@@ -30,6 +30,7 @@ def build_parser():
     parser.add_argument('--lr', type=float, default=0.005)
     parser.add_argument('--blend',action='store_true',default=True)
     parser.add_argument('--clipping',type=str,help='Options: standard or stochastic',default='stochastic')
+    parser.add_argument('--gpu',type=str,help='GPU ID to use (0 or 1)',default='0')
 
     return parser
 
@@ -134,7 +135,7 @@ def complete(args):
         assert(False)
 
     tf_config = tf.ConfigProto()
-    tf_config.gpu_options.visible_device_list = "1"
+    tf_config.gpu_options.visible_device_list = str(args.gpu)
 
     with tf.Session(config=tf_config) as sess:
         try:

@@ -20,6 +20,7 @@ def build_parser():
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
     parser.add_argument('--image_size',default=64,required=True)
+    parser.add_argument('--gpu',type=str,default="0")
     parser.add_argument('--ckpt_step', default=5000, help='# of steps for saving checkpoint (default: 5000)', type=int)
     parser.add_argument('--renew', action='store_true', help='train model from scratch - \
         clean saved checkpoints and summaries', default=False)
@@ -37,7 +38,7 @@ def sample_z(shape):
     return np.random.normal(size=shape)
 
 
-def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step, renew=False,simultaneous = False):
+def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step, renew=False,simultaneous = False,gpu="0"):
     # n_examples = 202599 # same as util.num_examples_from_tfrecords(glob.glob('./data/celebA_tfrecords/*.tfrecord'))
     # 1 epoch = 1583 steps
     print("\n# of examples: {}".format(n_examples))
@@ -63,7 +64,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
     g_grad_norm = []
 
     config = tf.ConfigProto()
-    config.gpu_options.visible_device_list = "1" # Works same as CUDA_VISIBLE_DEVICES!
+    config.gpu_options.visible_device_list = str(gpu) # Works same as CUDA_VISIBLE_DEVICES!
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer()) # for epochs
@@ -199,4 +200,4 @@ if __name__ == "__main__":
     resized_image_shape = [64,64,3]
     model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape)
     train(model=model, dataset=FLAGS.dataset,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
-        n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew,simultaneous = FLAGS.simultaneous)
+        n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew,simultaneous = FLAGS.simultaneous,gpu=FLAGS.gpu)

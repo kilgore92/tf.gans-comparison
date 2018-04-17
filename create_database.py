@@ -24,7 +24,7 @@ def create_database():
 
     os.makedirs(args.outDir)
 
-    models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dcgan-gp']
+    models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan']
     source_dirs = []
     for model in models:
         dir_path = os.path.join(os.getcwd(),'completions_stochastic',str(model),str(args.dataset))
