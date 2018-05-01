@@ -15,9 +15,8 @@ def build_parser():
     parser.add_argument('--model', help=models_str, required=True)
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
-    parser.add_argument('--sample_size', '-N', help='# of samples. It should be a square number. (default: 16)',
-        default=16, type=int)
-
+    parser.add_argument('--batch_size',default=512, type=int,help='Batch size for generated images')
+    parser.add_argument('--gpu',type=str,default="1")
     return parser
 
 
@@ -45,7 +44,7 @@ def get_all_checkpoints(ckpt_dir, force=False):
     return ckpts
 
 
-def eval(model, name, sample_dir,dataset, sample_shape=[4,4], load_all_ckpt=True):
+def eval(model, name, dataset,batch_size, gpu = "1",load_all_ckpt=True,sample_dir=None):
     if name == None:
         name = model.name
     if sample_dir == None:
@@ -56,30 +55,32 @@ def eval(model, name, sample_dir,dataset, sample_shape=[4,4], load_all_ckpt=True
         tf.gfile.DeleteRecursively(dir_name)
     tf.gfile.MakeDirs(dir_name)
 
-    restorer = tf.train.Saver(slim.get_model_variables())
 
     config = tf.ConfigProto()
-    best_gpu = utils.get_best_gpu()
-    config.gpu_options.visible_device_list = str(best_gpu)
+    config.gpu_options.visible_device_list = str(gpu)
     with tf.Session(config=config) as sess:
-        ckpt_path = os.path.join('checkpoints', dataset, name)
-        ckpts = get_all_checkpoints(ckpt_path, force=load_all_ckpt)
-        size = sample_shape[0] * sample_shape[1]
+        #Load the GAN model
+        restorer = tf.train.Saver()
+        checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',dataset.lower(),name.lower())
+        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
 
-        z_ = sample_z([size, model.z_dim])
+        if ckpt and ckpt.model_checkpoint_path:
+            restorer.restore(sess, ckpt.model_checkpoint_path)
+        else:
+            print('Invalid checkpoint directory')
+            assert(False)
 
-        for v in ckpts:
-            print("Evaluating {} ...".format(v))
-            restorer.restore(sess, v)
-            global_step = int(v.split('/')[-1].split('-')[-1])
+        n_batches = 20 # Atleast 10,000 images needed to get a good FID estimate
 
+        for batch in range(n_batches):
+            z_ = sample_z([batch_size, model.z_dim])
             fake_samples = sess.run(model.fake_sample, {model.z: z_})
-
             # inverse transform: [-1, 1] => [0, 1]
             fake_samples = (fake_samples + 1.) / 2.
-            merged_samples = utils.merge(fake_samples, size=sample_shape)
-            fn = "{:0>6d}.png".format(global_step)
-            scipy.misc.imsave(os.path.join(dir_name, fn), merged_samples)
+            for fake_sample,idx in zip(fake_samples,range(len(fake_samples))):
+                fn = "{}_{}.jpg".format(batch,idx)
+                scipy.misc.imsave(os.path.join(dir_name, fn), fake_sample)
+            print('Generated {} batches'.format(batch))
 
 
 '''
@@ -104,10 +105,6 @@ if __name__ == "__main__":
     if FLAGS.name is None:
         FLAGS.name = FLAGS.model.lower()
     config.pprint_args(FLAGS)
-
-    N = FLAGS.sample_size**0.5
-    assert N == int(N), 'sample size should be a square number'
-
     # training=False => build generator only
     model = config.get_model(FLAGS.model, FLAGS.name, training=False)
-    eval(model, dataset=FLAGS.dataset, name=FLAGS.name, sample_shape=[int(N),int(N)], load_all_ckpt=True)
+    eval(model,dataset=FLAGS.dataset, name=FLAGS.name, batch_size = FLAGS.batch_size, load_all_ckpt=True)
