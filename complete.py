@@ -10,11 +10,12 @@ import scipy.misc
 from eval import get_all_checkpoints
 from convert import center_crop
 import cv2
+import pickle
 slim = tf.contrib.slim
 
 def build_parser():
     parser = ArgumentParser()
-    parser.add_argument('--batch_size', default=128, help='default: 128', type=int)
+    parser.add_argument('--batch_size', default=512, help='default: 128', type=int)
     parser.add_argument('--num_threads', default=4, help='# of data read threads (default: 4)', type=int)
     models_str = ' / '.join(config.model_zoo)
     parser.add_argument('--model', help=models_str, required=True) # DRAGAN, CramerGAN
@@ -31,6 +32,8 @@ def build_parser():
     parser.add_argument('--blend',action='store_true',default=True)
     parser.add_argument('--clipping',type=str,help='Options: standard or stochastic',default='stochastic')
     parser.add_argument('--gpu',type=str,help='GPU ID to use (0 or 1)',default='0')
+    parser.add_argument('--mode',type=str,help='Completion mode : inpainting or latent',default='inpainting')
+    parser.add_argument('--source',type=str,help='Option for image for maps. train/test/inpaint',default='train')
 
     return parser
 
@@ -80,6 +83,7 @@ def read_image(image_path,image_shape):
 def save_image(image,path):
     scipy.misc.imsave(path,image)
 
+
 def complete(args):
     """
     Performs in-painting over images using a pre-trained
@@ -91,24 +95,37 @@ def complete(args):
     image_paths = get_image_paths(args.images)
     nImgs = len(image_paths)
 
+    print('Images found : {}'.format(nImgs))
+
     image_shape = [int(args.image_size),int(args.image_size),3]
 
 
+    latent_space_map = {}
     batch_idxs = int(np.ceil(nImgs/args.batch_size))
 
-    folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(args.maskType)
-    dumpDir = os.path.join(os.getcwd(),folder_name,args.model.lower(),args.dataset.lower())
+    maskType = args.maskType
 
-    if os.path.exists(dumpDir):
-        shutil.rmtree(dumpDir)
-    os.makedirs(dumpDir)
+    #Save the map dict
+    map_file = 'latent_space_'+args.source+'_'+args.model+'.pkl'
+
+    # If latent mappings need to be found, overwrite the default map type to 'full'
+    if args.mode == 'latent':
+        maskType = 'full'
 
 
-    if args.maskType == 'random':
+    if args.mode == 'inpaint':
+        folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(maskType)
+        dumpDir = os.path.join(os.getcwd(),folder_name,args.model.lower(),args.dataset.lower())
+        if os.path.exists(dumpDir):
+            shutil.rmtree(dumpDir)
+        os.makedirs(dumpDir)
+
+
+    if maskType == 'random':
         fraction_masked = 0.2
         mask = np.ones(image_shape)
         mask[np.random.random(image_shape[:2]) < fraction_masked] = 0.0
-    elif args.maskType == 'center': # Center mask removes 25% of the image
+    elif maskType == 'center': # Center mask removes 25% of the image
         patch_size = args.image_size//2
         crop_pos = (args.image_size - patch_size)/2
         mask = np.ones(image_shape)
@@ -116,16 +133,16 @@ def complete(args):
         l = int(crop_pos)
         u = int(crop_pos + patch_size)
         mask[l:u, l:u, :] = 0.0
-    elif args.maskType == 'left':
+    elif maskType == 'left':
         mask = np.ones(image_shape)
         c = args.image_size // 2
         mask[:,:c,:] = 0.0
-    elif args.maskType == 'full':
+    elif maskType == 'full':
         mask = np.ones(image_shape)
-    elif args.maskType == 'grid':
+    elif maskType == 'grid':
         mask = np.zeros(image_shape)
         mask[::4,::4,:] = 1.0
-    elif args.maskType == 'bottom':
+    elif maskType == 'bottom':
         mask = np.ones(image_shape)
         bottom_half = int(args.image_size/2)
         mask[bottom_half:args.image_size,:,:] = 0.0
@@ -178,14 +195,15 @@ def complete(args):
             m = 0
             v = 0
 
-            for file_idx in range(len(batch_images)):
-                folder_idx = l + file_idx
-                outDir = os.path.join(dumpDir,'{}'.format(folder_idx))
-                os.makedirs(outDir) # Directory that stores real and masked images, different for each real image
-                genDir = os.path.join(outDir,'gen_images') # Directory that stores iterations of in-paintings
-                os.makedirs(genDir)
-                save_image(image=batch_images[file_idx,:,:,:],path=os.path.join(outDir,'original.jpg'))
-                save_image(image=masked_images[file_idx,:,:,:],path=os.path.join(outDir,'masked.jpg'))
+            if args.mode == 'inpaint':
+                for file_idx in range(len(batch_images)):
+                    folder_idx = l + file_idx
+                    outDir = os.path.join(dumpDir,'{}'.format(folder_idx))
+                    os.makedirs(outDir) # Directory that stores real and masked images, different for each real image
+                    genDir = os.path.join(outDir,'gen_images') # Directory that stores iterations of in-paintings
+                    os.makedirs(genDir)
+                    save_image(image=batch_images[file_idx,:,:,:],path=os.path.join(outDir,'original.jpg'))
+                    save_image(image=masked_images[file_idx,:,:,:],path=os.path.join(outDir,'masked.jpg'))
 
 
             for i in range(args.nIter):
@@ -198,22 +216,23 @@ def complete(args):
                 loss, g, G_imgs= sess.run(run, feed_dict=fd)
 
                 if i%100 == 0:
-                    print('Batch : {}. Iteration : {}. Mean loss : {}'.format(idx,i, np.mean(loss[0:batchSz])))
-                    inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
-                    if args.blend == True and args.maskType == 'center':
-                        completed = []
-                        for img,indx in zip(G_imgs,range(len(G_imgs))):
-                            completed.append(blend_images(image = batch_images[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
-                        completed = np.asarray(completed)
-                    else:
-                        completed = masked_images + inv_masked_hat_images
-                    # Save all in-painted images of this iteration in their respective image folders
-                    for  image_idx in range(len(completed)):
-                        folder_idx = l + image_idx
-                        save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
-                        if args.blend is False:
-                            completed[image_idx,:,:,:] = rescale_image(completed[image_idx,:,:,:])
-                        save_image(image=completed[image_idx,:,:,:],path=save_path)
+                    print('Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(idx,batch_idxs,i, np.mean(loss[0:batchSz])))
+                    if args.mode == 'inpaint':
+                        inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
+                        if args.blend == True and maskType == 'center':
+                            completed = []
+                            for img,indx in zip(G_imgs,range(len(G_imgs))):
+                                completed.append(blend_images(image = batch_images[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
+                            completed = np.asarray(completed)
+                        else:
+                            completed = masked_images + inv_masked_hat_images
+                        # Save all in-painted images of this iteration in their respective image folders
+                        for  image_idx in range(len(completed)):
+                            folder_idx = l + image_idx
+                            save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
+                            if args.blend is False:
+                                completed[image_idx,:,:,:] = rescale_image(completed[image_idx,:,:,:])
+                            save_image(image=completed[image_idx,:,:,:],path=save_path)
 
                 # Adam implementation
                 m_prev = np.copy(m)
@@ -237,6 +256,13 @@ def complete(args):
                     print('Invalid clipping mode')
                     assert(False)
 
+            # Save the latent space vector
+            for path,idx in zip(batch_files,range(len(batch_files))):
+                    latent_space_map[path] = zhats[idx]
+
+            # Save each batch completed so that if things go wrong, no need to start from scratch !!
+            with open(map_file,'wb') as f:
+                pickle.dump(latent_space_map,f)
 
 
 if __name__ == '__main__':
