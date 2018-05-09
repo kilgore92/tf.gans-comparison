@@ -113,7 +113,7 @@ def complete(args):
         maskType = 'full'
 
 
-    if args.mode == 'inpaint':
+    if args.mode == 'inpainting':
         folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(maskType)
         dumpDir = os.path.join(os.getcwd(),folder_name,args.model.lower(),args.dataset.lower())
         if os.path.exists(dumpDir):
@@ -195,7 +195,7 @@ def complete(args):
             m = 0
             v = 0
 
-            if args.mode == 'inpaint':
+            if args.mode == 'inpainting':
                 for file_idx in range(len(batch_images)):
                     folder_idx = l + file_idx
                     outDir = os.path.join(dumpDir,'{}'.format(folder_idx))
@@ -217,7 +217,7 @@ def complete(args):
 
                 if i%100 == 0:
                     print('Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(idx,batch_idxs,i, np.mean(loss[0:batchSz])))
-                    if args.mode == 'inpaint':
+                    if args.mode == 'inpainting':
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                         if args.blend == True and maskType == 'center':
                             completed = []
@@ -260,7 +260,7 @@ def complete(args):
             for path,idx in zip(batch_files,range(len(batch_files))):
                     latent_space_map[path] = zhats[idx]
 
-            # Save each batch completed so that if things go wrong, no need to start from scratch !!
+            # Save every 10 batches batch completed so that if things go wrong, no need to start from scratch !!
             with open(map_file,'wb') as f:
                 pickle.dump(latent_space_map,f)
 
