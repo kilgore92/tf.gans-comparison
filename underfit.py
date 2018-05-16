@@ -13,6 +13,10 @@ import cv2
 import pickle
 import config
 from complete import rescale_image
+from complete import blend_images
+
+
+image_size = 64
 
 def build_parser():
     parser = ArgumentParser()
@@ -113,6 +117,14 @@ def analyze_vectors(args):
     config = tf.ConfigProto()
     config.gpu_options.visible_device_list = str(args.gpu)
 
+    # Create center mask
+    image_shape = [image_size,image_size,3]
+    patch_size = image_size//2
+    crop_pos = (image_size - patch_size)/2
+    l = int(crop_pos)
+    u = int(crop_pos + patch_size)
+    mask = np.ones(image_shape)
+    mask[l:u, l:u, :] = 0.0
 
     with tf.Session(config=config) as sess:
         #Load the GAN model
@@ -141,18 +153,31 @@ def analyze_vectors(args):
                 generalize.append(row)
             else: # Inpainting latent vector closer to training image latent vector
                 recall.append(row)
-            # Original images
-            image_list.append(read_and_crop_image(test_image_path))
-            image_list.append(read_and_crop_image(train_image_min))
+
+            testImg = read_and_crop_image(test_image_path)
+            Gz_inpainting = generate_image(model=model,sess=sess,z=z_inpainting.reshape(1,100))
+            Gz_inpainting = Gz_inpainting.reshape(image_size,image_size,3)
+            image_list.append(testImg) # Test Image -- Complete
+            image_list.append(generate_inpainting(testImg,mask,Gz_inpainting)) # Inpainted image
+            image_list.append(read_and_crop_image(train_image_min)) # Closest training image w.r.t z_inpainting
             # Generated Images
-            image_list.append(generate_image(model=model,sess=sess,z=z_inpainting.reshape(1,100)))
-            image_list.append(generate_image(model=model,sess=sess,z = z_test.reshape(1,100)))
-            image_list.append(generate_image(model=model,sess=sess,z=min_train_z.reshape(1,100)))
+            image_list.append(Gz_inpainting) # G(z_inpainting)
+            image_list.append(generate_image(model=model,sess=sess,z = z_test.reshape(1,100))) # G(z_test)
+            image_list.append(generate_image(model=model,sess=sess,z=min_train_z.reshape(1,100))) # G(z_training_min)
             merge_and_save(image_list=image_list,idx=image_idx,root_dir = root_dir)
             image_idx += 1
 
         print('Generalized inpaintings : {}'.format(len(generalize)))
         print('Recalled inpaintings : {}'.format(len(recall)))
+
+def generate_inpainting(testImg,mask,Gz):
+    """
+    Given test image,G(z_inpainting) and mask
+    return the inpainting
+
+    """
+    inpainting = blend_images(image=testImg,gen_image=Gz,mask=np.multiply(255,1.0-mask),rescale=False)
+    return inpainting
 
 
 def get_model(mname):

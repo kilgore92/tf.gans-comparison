@@ -55,7 +55,6 @@ def eval(model, name, dataset,batch_size, gpu = "1",load_all_ckpt=True,sample_di
         tf.gfile.DeleteRecursively(dir_name)
     tf.gfile.MakeDirs(dir_name)
 
-
     config = tf.ConfigProto()
     config.gpu_options.visible_device_list = str(gpu)
     with tf.Session(config=config) as sess:

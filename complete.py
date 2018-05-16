@@ -38,7 +38,7 @@ def build_parser():
     return parser
 
 
-def blend_images(image,gen_image,mask):
+def blend_images(image,gen_image,mask,rescale=True):
     # TODO : Re-factor code to enable blending for non-center masks
 
     """
@@ -46,11 +46,14 @@ def blend_images(image,gen_image,mask):
     using the OpenCV implementation of Poisson blending
 
     """
+    if rescale is True:
+        gen_image = rescale_image(gen_image)
 
-    gen_image = rescale_image(gen_image)
     gen_image = np.array(gen_image,dtype = np.uint8)
 
-    image = rescale_image(image)
+    if rescale is True:
+        image = rescale_image(image)
+
     image = np.array(image,dtype = np.uint8)
 
     mask = np.array(mask,dtype=np.uint8)
