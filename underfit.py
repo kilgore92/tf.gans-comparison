@@ -53,7 +53,7 @@ def merge_and_save(image_list,idx,root_dir):
 
     """
     Create an image mosiac.
-    Order (L-R) : Test Image - Closest Training Image - G(z_inpainting) - G(z_test) - G(min_train_z)
+    Order (L-R) : Test Image - Inpainting - Closest Training Image - G(z_inpainting) - G(z_test) - G(min_train_z)
 
     """
 
@@ -108,14 +108,21 @@ def analyze_vectors(args):
 
     os.makedirs(root_dir)
 
+    # Make 2 buckets -- recalled and generalized
+    recall_dir = os.path.join(root_dir,'recall')
+    generalized_dir = os.path.join(root_dir,'generalized')
+    os.makedirs(recall_dir)
+    os.makedirs(generalized_dir)
+
     recall = []
     generalize = []
     image_idx = 0
 
     model = get_model(mname=args.model)
 
-    config = tf.ConfigProto()
-    config.gpu_options.visible_device_list = str(args.gpu)
+    config = tf.ConfigProto(device_count = {'GPU': 0})
+    config.gpu_options.visible_device_list = ""
+
 
     # Create center mask
     image_shape = [image_size,image_size,3]
@@ -126,49 +133,54 @@ def analyze_vectors(args):
     mask = np.ones(image_shape)
     mask[l:u, l:u, :] = 0.0
 
-    with tf.Session(config=config) as sess:
-        #Load the GAN model
-        restorer = tf.train.Saver()
-        checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',args.dataset.lower(),args.model.lower())
-        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-        if ckpt and ckpt.model_checkpoint_path:
-            restorer.restore(sess, ckpt.model_checkpoint_path)
-        else:
-            print('Invalid checkpoint directory')
-            assert(False)
+    with tf.device('/cpu:0'):
+        with tf.Session(config=config) as sess:
+            #Load the GAN model
+            restorer = tf.train.Saver()
+            checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',args.dataset.lower(),args.model.lower())
+            ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+            if ckpt and ckpt.model_checkpoint_path:
+                restorer.restore(sess, ckpt.model_checkpoint_path)
+            else:
+                print('Invalid checkpoint directory')
+                assert(False)
 
-        # Iterate over the dict
-        for test_image_path,z_inpainting in z_inpainting_dict.items():
-            row = []
-            image_list = []
-            z_test = z_test_dict[test_image_path]
-            test_cosine = cosine(z_inpainting,z_test)
-            train_image_min,min_train_z,train_cosine = find_closest_vector(z_inpainting,z_train_dict)
-            row.append(test_image_path)
-            row.append(train_image_min)
-            row.append(test_cosine)
-            row.append(train_cosine)
-            print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(test_image_path,train_cosine,test_cosine))
-            if test_cosine <= train_cosine: # Inpainting latent vector closer to test latent vector
-                generalize.append(row)
-            else: # Inpainting latent vector closer to training image latent vector
-                recall.append(row)
+            # Iterate over the dict
+            for test_image_path,z_inpainting in z_inpainting_dict.items():
+                row = []
+                image_list = []
+                z_test = z_test_dict[test_image_path]
+                test_cosine = cosine(z_inpainting,z_test)
+                train_image_min,min_train_z,train_cosine = find_closest_vector(z_inpainting,z_train_dict)
+                row.append(test_image_path)
+                row.append(train_image_min)
+                row.append(test_cosine)
+                row.append(train_cosine)
+                print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(test_image_path,train_cosine,test_cosine))
 
-            testImg = read_and_crop_image(test_image_path)
-            Gz_inpainting = generate_image(model=model,sess=sess,z=z_inpainting.reshape(1,100))
-            Gz_inpainting = Gz_inpainting.reshape(image_size,image_size,3)
-            image_list.append(testImg) # Test Image -- Complete
-            image_list.append(generate_inpainting(testImg,mask,Gz_inpainting)) # Inpainted image
-            image_list.append(read_and_crop_image(train_image_min)) # Closest training image w.r.t z_inpainting
-            # Generated Images
-            image_list.append(Gz_inpainting) # G(z_inpainting)
-            image_list.append(generate_image(model=model,sess=sess,z = z_test.reshape(1,100))) # G(z_test)
-            image_list.append(generate_image(model=model,sess=sess,z=min_train_z.reshape(1,100))) # G(z_training_min)
-            merge_and_save(image_list=image_list,idx=image_idx,root_dir = root_dir)
-            image_idx += 1
+                testImg = read_and_crop_image(test_image_path)
+                Gz_inpainting = generate_image(model=model,sess=sess,z=z_inpainting.reshape(1,100))
+                Gz_inpainting = Gz_inpainting.reshape(image_size,image_size,3)
 
-        print('Generalized inpaintings : {}'.format(len(generalize)))
-        print('Recalled inpaintings : {}'.format(len(recall)))
+                image_list.append(testImg) # Test Image -- Complete
+                image_list.append(generate_inpainting(testImg,mask,Gz_inpainting)) # Inpainted image
+                image_list.append(read_and_crop_image(train_image_min)) # Closest training image w.r.t z_inpainting
+
+                # Generated Images -- from the 3z's
+                image_list.append(Gz_inpainting) # G(z_inpainting)
+                image_list.append(generate_image(model=model,sess=sess,z = z_test.reshape(1,100))) # G(z_test)
+                image_list.append(generate_image(model=model,sess=sess,z=min_train_z.reshape(1,100))) # G(z_training_min)
+                image_idx += 1
+
+                if test_cosine <= train_cosine: # Inpainting latent vector closer to test latent vector
+                    generalize.append(row)
+                    merge_and_save(image_list=image_list,idx=image_idx,root_dir = generalized_dir)
+                else: # Inpainting latent vector closer to training image latent vector
+                    recall.append(row)
+                    merge_and_save(image_list=image_list,idx=image_idx,root_dir = recall_dir)
+
+            print('Generalized inpaintings : {}'.format(len(generalize)))
+            print('Recalled inpaintings : {}'.format(len(recall)))
 
 def generate_inpainting(testImg,mask,Gz):
     """
