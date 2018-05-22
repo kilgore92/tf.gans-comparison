@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tqdm import tqdm
 import numpy as np
 from scipy.spatial.distance import cosine
 import glob, os, sys
@@ -14,11 +13,12 @@ import pickle
 import config
 from complete import rescale_image
 from complete import blend_images
+import pandas as pd
 
 
 image_size = 64
-#FIXME
-test_images_root = '/home/ibhat/gans_compare/tf.gans-comparison/completions_stochastic/dcgan/celeba'
+
+test_images_root = '/home/ibhat/gans_compare/tf.gans-comparison/images_db'
 
 def build_parser():
     parser = ArgumentParser()
@@ -33,14 +33,14 @@ def find_closest_training_image(emb_inpainting,train_emb_dict):
     """
     Finds closest image from training set w.r.t G(z_inpainting) based on the learned metric
 
-    Args : emb_inpainting : z-vector for an in-painted image
+    Args : emb_inpainting : Embedding for an in-painted image
            train_emb_dict : Dictionary containing training_image:embedding mapping
 
     Returns : minimum value of cosine,training image path for the minimum value
 
 
     """
-    min_cosine = 5.0
+    min_cosine = 2.0
     min_training_image_path = ''
     for t_image_path,emb_training in train_emb_dict.items():
         cosine_distance = cosine(emb_inpainting,emb_training)
@@ -89,7 +89,7 @@ def read_and_crop_image(fname):
 
 def get_inpainting_path(idx,mname):
     imgName = '{}.jpg'.format(mname.lower())
-    imgPath = os.path.join(test_images_root,str(idx),'gen_images','gen_1400.jpg')
+    imgPath = os.path.join(test_images_root,str(idx),'gen','{}.jpg'.format(mname.lower()))
     return imgPath
 
 def read_dict(root_dir,model):
@@ -97,10 +97,10 @@ def read_dict(root_dir,model):
     Reads all three embedding dictionaries
 
     """
-    with open(os.path.join(root_dir,'train_image_emb.pkl'),'rb') as f:
+    with open(os.path.join(root_dir,'train_emb_dict.pkl'),'rb') as f:
         train_emb_dict = pickle.load(f)
 
-    with open(os.path.join(root_dir,'test_image_emb.pkl'),'rb') as f:
+    with open(os.path.join(root_dir,'test_emb_dict.pkl'),'rb') as f:
         test_emb_dict = pickle.load(f)
 
     fname = os.path.join(root_dir,'{}_emb_dict.pkl'.format(model.lower()))
@@ -167,9 +167,11 @@ def analyze_vectors(args):
         test_inp_cosine = cosine(emb_inpainting,emb_test)
         # Find the closest training image in the embedding space
         t_image_min_path, train_inp_min_cosine = find_closest_training_image(emb_inpainting,train_emb_dict)
+        t_image_min_path_test, train_test_min_cosine = find_closest_training_image(emb_test,train_emb_dict)
 
         row.append(source_img)
         row.append(gz_path)
+        row.append(t_image_min_path)
         row.append(test_inp_cosine)
         row.append(train_inp_min_cosine)
 
@@ -182,7 +184,8 @@ def analyze_vectors(args):
         image_list.append(testImg) # Test Image -- Complete
         image_list.append(inpImg) # Inpainting
         image_list.append(Gz) # G(z_inpainting)
-        image_list.append(read_and_crop_image(t_image_min_path)) # Closest training image w.r.t z_inpainting
+        image_list.append(read_and_crop_image(t_image_min_path)) # Closest training image w.r.t emb_inpainting
+        image_list.append(read_and_crop_image(t_image_min_path_test)) # Closest training image w.r.t emb_test
 
 
         if test_inp_cosine <= train_inp_min_cosine: # Inpainting latent vector closer to test latent vector
@@ -194,6 +197,15 @@ def analyze_vectors(args):
 
     print('Generalized inpaintings : {}'.format(len(generalize)))
     print('Recalled inpaintings : {}'.format(len(recall)))
+
+    if len(generalize) > 0:
+        df_gen = pd.DataFrame(data=np.asarray(generalize),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
+        df.to_csv(os.path.join(outDir,'emb_results_gen.csv'))
+
+    if len(recall) > 0:
+        df_gen = pd.DataFrame(data=np.asarray(recall),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
+        df.to_csv(os.path.join(outDir,'emb_results_recall.csv'))
+
 
 
 def generate_inpainting(testImg,mask,Gz):
