@@ -17,43 +17,44 @@ from complete import blend_images
 
 
 image_size = 64
+#FIXME
+test_images_root = '/home/ibhat/gans_compare/tf.gans-comparison/completions_stochastic/dcgan/celeba'
 
 def build_parser():
     parser = ArgumentParser()
     parser.add_argument('--model', type=str,help='Provide model for which analysis should be performed. eg: DCGAN/WGAN/...', required=True)
     parser.add_argument('--dataset',type=str,help='Dataset to analyze',default='celeba')
-    parser.add_argument('--gpu',type=str,help='GPU to select,valid options 0 or 1',default="1")
+    parser.add_argument('--emb',type=str,help='Root dir where the embedding dictionaries are saved',default='/home/ibhat/facenet/facenet/embeddings')
     return parser
 
 
 
-def find_closest_vector(z_inpainting,z_train_dict):
+def find_closest_training_image(emb_inpainting,train_emb_dict):
     """
-    Finds closest z-vector from the training data
-    for a given z_inpainting vector
-    Args : z_inpainting : z-vector for an in-painted image
-           z_train_dict : Dictionary containing training_image:z mapping
+    Finds closest image from training set w.r.t G(z_inpainting) based on the learned metric
 
-    Returns : cosine similarity between z_inpainting and z_train_closest
-              z_train_closest
+    Args : emb_inpainting : z-vector for an in-painted image
+           train_emb_dict : Dictionary containing training_image:embedding mapping
+
+    Returns : minimum value of cosine,training image path for the minimum value
+
 
     """
     min_cosine = 5.0
     min_training_image_path = ''
-    for t_image_path,z_training in z_train_dict.items():
-        cosine_distance = cosine(z_inpainting,z_training)
+    for t_image_path,emb_training in train_emb_dict.items():
+        cosine_distance = cosine(emb_inpainting,emb_training)
         if cosine_distance < min_cosine:
             min_cosine = cosine_distance
             min_training_image_path = t_image_path
-            min_train_z = z_training
 
-    return min_training_image_path,min_train_z,min_cosine
+    return min_training_image_path,min_cosine
 
 def merge_and_save(image_list,idx,root_dir):
 
     """
     Create an image mosiac.
-    Order (L-R) : Test Image - Inpainting - Closest Training Image - G(z_inpainting) - G(z_test) - G(min_train_z)
+    Order (L-R) : Test Image - Inpainting - G(z_inpainting) - Closest Training Image
 
     """
 
@@ -86,31 +87,63 @@ def read_and_crop_image(fname):
     """
     return center_crop(im = scipy.misc.imread(fname,mode='RGB'),output_size=[64,64])
 
+def get_inpainting_path(idx,mname):
+    imgName = '{}.jpg'.format(mname.lower())
+    imgPath = os.path.join(test_images_root,str(idx),'gen_images','gen_1400.jpg')
+    return imgPath
+
+def read_dict(root_dir,model):
+    """
+    Reads all three embedding dictionaries
+
+    """
+    with open(os.path.join(root_dir,'train_image_emb.pkl'),'rb') as f:
+        train_emb_dict = pickle.load(f)
+
+    with open(os.path.join(root_dir,'test_image_emb.pkl'),'rb') as f:
+        test_emb_dict = pickle.load(f)
+
+    fname = os.path.join(root_dir,'{}_emb_dict.pkl'.format(model.lower()))
+    with open(fname,'rb') as f:
+        inpaint_emb_dict = pickle.load(f)
+
+    return train_emb_dict,test_emb_dict,inpaint_emb_dict
+
+def get_source_image(gz_path):
+
+    """
+    Given path to G(z_inpainting), return the path to the
+    source image (on which inpainting was performed)
+
+    """
+    fname = gz_path.split('/')[-1]
+    idx = fname.split('.')[0] # Image ID
+    source_img = os.path.join(test_images_root,str(idx),'original.jpg')
+    return source_img
+
+
+
 def analyze_vectors(args):
 
     """
-    Returns closest training image embedding for each
-    inpainted image
+
+    Performs an analysis of the embeddings for the train, test and G(z_inpainting)
 
     """
-    with open('latent_space_inpaint_{}.pkl'.format(args.model.upper()),'rb') as f:
-        z_inpainting_dict = pickle.load(f)
 
-    with open('latent_space_test_{}.pkl'.format(args.model.upper()),'rb') as f:
-        z_test_dict = pickle.load(f)
+    train_emb_dict,test_emb_dict,inpaint_emb_dict = read_dict(args.emb,args.model)
 
-    with open('latent_space_train_{}.pkl'.format(args.model.upper()),'rb') as f:
-        z_train_dict = pickle.load(f)
 
-    root_dir = os.path.join(os.getcwd(),'3z_{}'.format(args.model))
-    if os.path.exists(root_dir):
-        shutil.rmtree(root_dir)
+    outDir = os.path.join(os.getcwd(),'{}_embedding'.format(args.model.upper()))
 
-    os.makedirs(root_dir)
+    if os.path.exists(outDir) is True:
+        shutil.rmtree(outDir)
+
+    os.makedirs(outDir)
 
     # Make 2 buckets -- recalled and generalized
-    recall_dir = os.path.join(root_dir,'recall')
-    generalized_dir = os.path.join(root_dir,'generalized')
+    recall_dir = os.path.join(outDir,'recall')
+    generalized_dir = os.path.join(outDir,'generalized')
     os.makedirs(recall_dir)
     os.makedirs(generalized_dir)
 
@@ -118,69 +151,50 @@ def analyze_vectors(args):
     generalize = []
     image_idx = 0
 
-    model = get_model(mname=args.model)
 
-    config = tf.ConfigProto(device_count = {'GPU': 0})
-    config.gpu_options.visible_device_list = ""
+    # Iterate over the dict
+    for gz_path,emb_inpainting in inpaint_emb_dict.items():
+        row = []
+        image_list = []
+
+        image_idx = gz_path.split('/')[-1].split('.')[0] # Get imageID from Gz file name
+
+        # From the inpaint file, fetch corr. source image
+        source_img = get_source_image(gz_path)
+        # Using the source image path, perform a look up for the embedding
+        emb_test = test_emb_dict[source_img]
+        # Cosine between source image and G(z_inpainting)
+        test_inp_cosine = cosine(emb_inpainting,emb_test)
+        # Find the closest training image in the embedding space
+        t_image_min_path, train_inp_min_cosine = find_closest_training_image(emb_inpainting,train_emb_dict)
+
+        row.append(source_img)
+        row.append(gz_path)
+        row.append(test_inp_cosine)
+        row.append(train_inp_min_cosine)
+
+        print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(source_img,train_inp_min_cosine,test_inp_cosine))
+
+        testImg = read_and_crop_image(source_img)
+        Gz = read_and_crop_image(gz_path)
+        inpImg = read_and_crop_image(get_inpainting_path(image_idx,args.model))
+
+        image_list.append(testImg) # Test Image -- Complete
+        image_list.append(inpImg) # Inpainting
+        image_list.append(Gz) # G(z_inpainting)
+        image_list.append(read_and_crop_image(t_image_min_path)) # Closest training image w.r.t z_inpainting
 
 
-    # Create center mask
-    image_shape = [image_size,image_size,3]
-    patch_size = image_size//2
-    crop_pos = (image_size - patch_size)/2
-    l = int(crop_pos)
-    u = int(crop_pos + patch_size)
-    mask = np.ones(image_shape)
-    mask[l:u, l:u, :] = 0.0
+        if test_inp_cosine <= train_inp_min_cosine: # Inpainting latent vector closer to test latent vector
+            generalize.append(row)
+            merge_and_save(image_list=image_list,idx=image_idx,root_dir = generalized_dir)
+        else: # Inpainting latent vector closer to training image latent vector
+            recall.append(row)
+            merge_and_save(image_list=image_list,idx=image_idx,root_dir = recall_dir)
 
-    with tf.device('/cpu:0'):
-        with tf.Session(config=config) as sess:
-            #Load the GAN model
-            restorer = tf.train.Saver()
-            checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',args.dataset.lower(),args.model.lower())
-            ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                restorer.restore(sess, ckpt.model_checkpoint_path)
-            else:
-                print('Invalid checkpoint directory')
-                assert(False)
+    print('Generalized inpaintings : {}'.format(len(generalize)))
+    print('Recalled inpaintings : {}'.format(len(recall)))
 
-            # Iterate over the dict
-            for test_image_path,z_inpainting in z_inpainting_dict.items():
-                row = []
-                image_list = []
-                z_test = z_test_dict[test_image_path]
-                test_cosine = cosine(z_inpainting,z_test)
-                train_image_min,min_train_z,train_cosine = find_closest_vector(z_inpainting,z_train_dict)
-                row.append(test_image_path)
-                row.append(train_image_min)
-                row.append(test_cosine)
-                row.append(train_cosine)
-                print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(test_image_path,train_cosine,test_cosine))
-
-                testImg = read_and_crop_image(test_image_path)
-                Gz_inpainting = generate_image(model=model,sess=sess,z=z_inpainting.reshape(1,100))
-                Gz_inpainting = Gz_inpainting.reshape(image_size,image_size,3)
-
-                image_list.append(testImg) # Test Image -- Complete
-                image_list.append(generate_inpainting(testImg,mask,Gz_inpainting)) # Inpainted image
-                image_list.append(read_and_crop_image(train_image_min)) # Closest training image w.r.t z_inpainting
-
-                # Generated Images -- from the 3z's
-                image_list.append(Gz_inpainting) # G(z_inpainting)
-                image_list.append(generate_image(model=model,sess=sess,z = z_test.reshape(1,100))) # G(z_test)
-                image_list.append(generate_image(model=model,sess=sess,z=min_train_z.reshape(1,100))) # G(z_training_min)
-                image_idx += 1
-
-                if test_cosine <= train_cosine: # Inpainting latent vector closer to test latent vector
-                    generalize.append(row)
-                    merge_and_save(image_list=image_list,idx=image_idx,root_dir = generalized_dir)
-                else: # Inpainting latent vector closer to training image latent vector
-                    recall.append(row)
-                    merge_and_save(image_list=image_list,idx=image_idx,root_dir = recall_dir)
-
-            print('Generalized inpaintings : {}'.format(len(generalize)))
-            print('Recalled inpaintings : {}'.format(len(recall)))
 
 def generate_inpainting(testImg,mask,Gz):
     """
@@ -244,10 +258,8 @@ def save_gz(args):
 
 
 
-
-
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
-    save_gz(args)
+    analyze_vectors(args)
 
