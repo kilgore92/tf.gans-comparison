@@ -7,7 +7,6 @@ from argparse import ArgumentParser
 import utils, config
 import shutil
 import scipy.misc
-from eval import get_all_checkpoints
 from convert import center_crop
 import cv2
 import pickle
@@ -33,7 +32,7 @@ def build_parser():
     parser.add_argument('--clipping',type=str,help='Options: standard or stochastic',default='stochastic')
     parser.add_argument('--gpu',type=str,help='GPU ID to use (0 or 1)',default='0')
     parser.add_argument('--mode',type=str,help='Completion mode : inpainting or latent',default='inpainting')
-    parser.add_argument('--source',type=str,help='Option for image for maps. train/test/inpaint',default='train')
+    parser.add_argument('--source',type=str,help='Option for image for maps. train/test/inpaint',default='inpaint')
 
     return parser
 
@@ -109,7 +108,7 @@ def complete(args):
     maskType = args.maskType
 
     #Save the map dict
-    map_file = 'latent_space_'+args.source+'_'+args.model+'.pkl'
+    map_file = 'latent_space_'+args.source+'_'+args.model.upper()+'.pkl'
 
     # If latent mappings need to be found, overwrite the default map type to 'full'
     if args.mode == 'latent':

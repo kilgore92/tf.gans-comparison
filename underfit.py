@@ -6,7 +6,6 @@ from argparse import ArgumentParser
 import utils, config
 import shutil
 import scipy.misc
-from eval import get_all_checkpoints
 from convert import center_crop
 import cv2
 import pickle
@@ -70,14 +69,6 @@ def merge_and_save(image_list,idx,root_dir):
 
     scipy.misc.imsave(filename,img)
 
-
-def generate_image(model,sess,z):
-    """
-    For a given z, return G(z)
-
-    """
-    g_img = sess.run(model.fake_sample,feed_dict = {model.z : z})
-    return rescale_image(g_img[0])
 
 
 def read_and_crop_image(fname):
@@ -200,11 +191,11 @@ def analyze_vectors(args):
 
     if len(generalize) > 0:
         df_gen = pd.DataFrame(data=np.asarray(generalize),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
-        df.to_csv(os.path.join(outDir,'emb_results_gen.csv'))
+        df_gen.to_csv(os.path.join(outDir,'emb_results_gen.csv'))
 
     if len(recall) > 0:
-        df_gen = pd.DataFrame(data=np.asarray(recall),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
-        df.to_csv(os.path.join(outDir,'emb_results_recall.csv'))
+        df_recall = pd.DataFrame(data=np.asarray(recall),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
+        df_recall.to_csv(os.path.join(outDir,'emb_results_recall.csv'))
 
 
 
@@ -218,59 +209,9 @@ def generate_inpainting(testImg,mask,Gz):
     return inpainting
 
 
-def get_model(mname):
-    """
-    Instantiate the GAN model
-
-    """
-    model = config.get_model(mtype=mname.upper(),name=mname.lower(),training=False)
-    return model
-
-def save_gz(args):
-    """
-    From a pickled dictionary (image_id:z_inpainting),
-    save the G(z_inpainting) images in a folder
-
-    """
-    # Read in the picked dict
-    filename = 'latent_space_inpaint_'+'{}.pkl'.format(args.model.upper())
-    with open(filename,'rb') as f:
-        z_dict = pickle.load(f)
-
-    # Create output directory
-    dir_name = 'gz_{}'.format(args.model.upper())
-    dir_path = os.path.join(os.getcwd(),dir_name)
-    if os.path.exists(dir_path):
-        shutil.rmtree(dir_path)
-    os.makedirs(dir_path)
-
-    # Get the saved GAN model
-    model = get_model(mname=args.model)
-
-    config = tf.ConfigProto(device_count = {'GPU': 0})
-    config.gpu_options.visible_device_list = ""
-
-    with tf.device('/cpu:0'):
-        with tf.Session(config=config) as sess:
-            #Load the GAN model
-            restorer = tf.train.Saver()
-            checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',args.dataset.lower(),args.model.lower())
-            ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                restorer.restore(sess, ckpt.model_checkpoint_path)
-            else:
-                print('Invalid checkpoint directory')
-                assert(False)
-
-            for idx,z in z_dict.items():
-                image_file = str(idx) + '.jpg'
-                image_path = os.path.join(dir_path,image_file)
-                gz = generate_image(model=model,sess=sess,z=z.reshape(1,100))
-                scipy.misc.imsave(image_path,gz)
-
-
 
 if __name__ == '__main__':
+
     parser = build_parser()
     args = parser.parse_args()
     analyze_vectors(args)
