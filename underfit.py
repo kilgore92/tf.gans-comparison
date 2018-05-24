@@ -1,4 +1,3 @@
-import tensorflow as tf
 import numpy as np
 from scipy.spatial.distance import cosine
 import glob, os, sys
@@ -46,8 +45,9 @@ def find_closest_training_image(emb_inpainting,train_emb_dict):
         if cosine_distance < min_cosine:
             min_cosine = cosine_distance
             min_training_image_path = t_image_path
+            min_training_image_emb = emb_training
 
-    return min_training_image_path,min_cosine
+    return min_training_image_path,min_cosine,min_training_image_emb
 
 def merge_and_save(image_list,idx,root_dir):
 
@@ -142,6 +142,8 @@ def analyze_vectors(args):
     generalize = []
     image_idx = 0
 
+    closest_train_image_dict = {}
+
 
     # Iterate over the dict
     for gz_path,emb_inpainting in inpaint_emb_dict.items():
@@ -157,8 +159,10 @@ def analyze_vectors(args):
         # Cosine between source image and G(z_inpainting)
         test_inp_cosine = cosine(emb_inpainting,emb_test)
         # Find the closest training image in the embedding space
-        t_image_min_path, train_inp_min_cosine = find_closest_training_image(emb_inpainting,train_emb_dict)
-        t_image_min_path_test, train_test_min_cosine = find_closest_training_image(emb_test,train_emb_dict)
+        t_image_min_path, train_inp_min_cosine,train_inp_min_emb = find_closest_training_image(emb_inpainting,train_emb_dict)
+
+        # Maintain "closest" training images dictionary
+        closest_train_image_dict[t_image_min_path] = train_inp_min_emb
 
         row.append(source_img)
         row.append(gz_path)
@@ -176,8 +180,6 @@ def analyze_vectors(args):
         image_list.append(inpImg) # Inpainting
         image_list.append(Gz) # G(z_inpainting)
         image_list.append(read_and_crop_image(t_image_min_path)) # Closest training image w.r.t emb_inpainting
-        image_list.append(read_and_crop_image(t_image_min_path_test)) # Closest training image w.r.t emb_test
-
 
         if test_inp_cosine <= train_inp_min_cosine: # Inpainting latent vector closer to test latent vector
             generalize.append(row)
@@ -196,6 +198,10 @@ def analyze_vectors(args):
     if len(recall) > 0:
         df_recall = pd.DataFrame(data=np.asarray(recall),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
         df_recall.to_csv(os.path.join(outDir,'emb_results_recall.csv'))
+
+    # Save the dict
+    with open(os.path.join(outDir,'closest_train_emb.pkl'),'wb') as f:
+        pickle.dump(closest_train_image_dict,f)
 
 
 
