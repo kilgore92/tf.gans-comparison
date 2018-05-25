@@ -28,7 +28,6 @@ def build_parser():
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--eps', type=float, default=1e-8)
     parser.add_argument('--lr', type=float, default=0.005)
-    parser.add_argument('--blend',action='store_true',default=False)
     parser.add_argument('--clipping',type=str,help='Options: standard or stochastic',default='stochastic')
     parser.add_argument('--gpu',type=str,help='GPU ID to use (0 or 1)',default='0')
     parser.add_argument('--mode',type=str,help='Completion mode : inpainting or latent',default='inpainting')
@@ -116,10 +115,8 @@ def complete(args):
 
 
     if args.mode == 'inpainting':
-        if args.blend == True:
-            folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(maskType)
-        else:
-            folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(maskType)+'_'+'overlay'
+
+        folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(maskType)
 
         dumpDir = os.path.join(os.getcwd(),folder_name,args.model.lower(),args.dataset.lower())
 
@@ -208,7 +205,9 @@ def complete(args):
                     outDir = os.path.join(dumpDir,'{}'.format(folder_idx))
                     os.makedirs(outDir) # Directory that stores real and masked images, different for each real image
                     genDir = os.path.join(outDir,'gen_images') # Directory that stores iterations of in-paintings
+                    genDir_overlay = os.path.join(outDir,'gen_images_overlay') # Directory that stores iterations of in-paintings
                     os.makedirs(genDir)
+                    os.makedirs(genDir_overlay)
                     gzDir = os.path.join(outDir,'gz')
                     os.makedirs(gzDir)
                     save_image(image=batch_images[file_idx,:,:,:],path=os.path.join(outDir,'original.jpg'))
@@ -228,24 +227,23 @@ def complete(args):
                     print('Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(idx,batch_idxs,i, np.mean(loss[0:batchSz])))
                     if args.mode == 'inpainting':
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
-                        if args.blend == True and maskType == 'center':
-                            completed = []
-                            overlay = masked_images + inv_masked_hat_images
-                            for img,indx in zip(G_imgs,range(len(G_imgs))):
-                                completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
-                            completed = np.asarray(completed)
-                        else:
-                            completed = masked_images + inv_masked_hat_images
+                        completed = []
+                        overlay = masked_images + inv_masked_hat_images
+                        for img,indx in zip(G_imgs,range(len(G_imgs))):
+                            completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
+                        completed = np.asarray(completed)
+
+                        overlay = masked_images + inv_masked_hat_images
                         # Save all in-painted images of this iteration in their respective image folders
 
                         for  image_idx in range(len(completed)):
                             folder_idx = l + image_idx
                             save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
+                            save_path_overlay = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images_overlay','gen_{}.jpg'.format(i))
                             save_path_gz = os.path.join(dumpDir,'{}'.format(folder_idx),'gz','gz_{}.jpg'.format(i))
-                            if args.blend is False:
-                                completed[image_idx,:,:,:] = rescale_image(completed[image_idx,:,:,:])
-
+                            overlay[image_idx,:,:,:] = rescale_image(overlay[image_idx,:,:,:])
                             save_image(image=completed[image_idx,:,:,:],path=save_path)
+                            save_image(image=overlay[image_idx,:,:,:],path=save_path_overlay)
                             save_image(image=rescale_image(G_imgs[image_idx,:,:,:]),path=save_path_gz)
 
                 # Adam implementation
