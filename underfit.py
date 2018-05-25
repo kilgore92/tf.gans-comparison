@@ -17,6 +17,8 @@ import pandas as pd
 image_size = 64
 
 test_images_root = '/home/ibhat/gans_compare/tf.gans-comparison/images_db'
+inpaint_blend_root = '/home/ibhat/gans_compare/tf.gans-comparison/completions_stochastic_center/dcgan/celeba'
+inpaint_overlay_root = '/home/ibhat/gans_compare/tf.gans-comparison/completions_stochastic_center/dcgan_no_blend/celeba'
 
 def build_parser():
     parser = ArgumentParser()
@@ -173,11 +175,15 @@ def analyze_vectors(args):
         print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(source_img,train_inp_min_cosine,test_inp_cosine))
 
         testImg = read_and_crop_image(source_img)
-        Gz = read_and_crop_image(gz_path)
-        inpImg = read_and_crop_image(get_inpainting_path(image_idx,args.model))
+        inpImg = read_and_crop_image(get_inpainting_path(image_idx,args.model)) # buggy image
+        inpImg_blend = read_and_crop_image(os.path.join(inpaint_blend_root,str(image_idx),'gen_images','gen_1400.jpg'))
+        inpImg_overlay = read_and_crop_image(os.path.join(inpaint_overlay_root,str(image_idx),'gen_images','gen_1400.jpg'))
+        Gz = read_and_crop_image(os.path.join(inpaint_blend_root,str(image_idx),'gz','gz_1400.jpg'))
 
         image_list.append(testImg) # Test Image -- Complete
         image_list.append(inpImg) # Inpainting
+        image_list.append(inpImg_blend)
+        image_list.append(inpImg_overlay)
         image_list.append(Gz) # G(z_inpainting)
         image_list.append(read_and_crop_image(t_image_min_path)) # Closest training image w.r.t emb_inpainting
 
