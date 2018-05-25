@@ -17,8 +17,6 @@ import pandas as pd
 image_size = 64
 
 test_images_root = '/home/ibhat/gans_compare/tf.gans-comparison/images_db'
-inpaint_blend_root = '/home/ibhat/gans_compare/tf.gans-comparison/completions_stochastic_center/dcgan/celeba'
-inpaint_overlay_root = '/home/ibhat/gans_compare/tf.gans-comparison/completions_stochastic_center/dcgan_no_blend/celeba'
 
 def build_parser():
     parser = ArgumentParser()
@@ -109,8 +107,8 @@ def get_source_image(gz_path):
     source image (on which inpainting was performed)
 
     """
-    fname = gz_path.split('/')[-1]
-    idx = fname.split('.')[0] # Image ID
+
+    idx = gz_path.split('/')[-3]
     source_img = os.path.join(test_images_root,str(idx),'original.jpg')
     return source_img
 
@@ -146,14 +144,16 @@ def analyze_vectors(args):
 
     closest_train_image_dict = {}
 
+    # Path for inpainted images (with blending bug fixed)
+    inpaint_path_root = os.path.join(os.getcwd(),'completions_stochastic_center','{}'.format(args.model.lower()),'celeba')
 
     # Iterate over the dict
     for gz_path,emb_inpainting in inpaint_emb_dict.items():
         row = []
         image_list = []
 
-        image_idx = gz_path.split('/')[-1].split('.')[0] # Get imageID from Gz file name
-
+        #image_idx = gz_path.split('/')[-1].split('.')[0] # Get imageID from Gz file name
+        image_idx = gz_path.split('/')[-3]
         # From the inpaint file, fetch corr. source image
         source_img = get_source_image(gz_path)
         # Using the source image path, perform a look up for the embedding
@@ -175,15 +175,21 @@ def analyze_vectors(args):
         print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(source_img,train_inp_min_cosine,test_inp_cosine))
 
         testImg = read_and_crop_image(source_img)
+        maskImg = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'masked.jpg'))
+
+        # Inpaintings -- Buggy - Blended - Overlay
         inpImg = read_and_crop_image(get_inpainting_path(image_idx,args.model)) # buggy image
-        inpImg_blend = read_and_crop_image(os.path.join(inpaint_blend_root,str(image_idx),'gen_images','gen_1400.jpg'))
-        inpImg_overlay = read_and_crop_image(os.path.join(inpaint_overlay_root,str(image_idx),'gen_images','gen_1400.jpg'))
-        Gz = read_and_crop_image(os.path.join(inpaint_blend_root,str(image_idx),'gz','gz_1400.jpg'))
+        inpImg_blend = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images','gen_1400.jpg'))
+        inpImg_overlay = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images_overlay','gen_1400.jpg'))
+
+        # G(z)
+        Gz = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gz','gz_1400.jpg'))
 
         image_list.append(testImg) # Test Image -- Complete
-        image_list.append(inpImg) # Inpainting
-        image_list.append(inpImg_blend)
-        image_list.append(inpImg_overlay)
+        image_list.append(maskImg) # Masked
+        image_list.append(inpImg) # Inpainting -- buggy
+        image_list.append(inpImg_blend) # Inpainting -- blend
+        image_list.append(inpImg_overlay) # Inpainting -- overlay
         image_list.append(Gz) # G(z_inpainting)
         image_list.append(read_and_crop_image(t_image_min_path)) # Closest training image w.r.t emb_inpainting
 

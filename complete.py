@@ -233,7 +233,6 @@ def complete(args):
                             completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
                         completed = np.asarray(completed)
 
-                        overlay = masked_images + inv_masked_hat_images
                         # Save all in-painted images of this iteration in their respective image folders
 
                         for  image_idx in range(len(completed)):
