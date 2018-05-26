@@ -14,7 +14,7 @@ def create_database():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--outDir',type=str,default = 'database')
-    parser.add_argument('--rootDir',type=str,default='completions_stochastic')
+    parser.add_argument('--rootDir',type=str,default='completions_stochastic_center')
     parser.add_argument('--dataset',type=str,default = 'celeba')
     parser.add_argument('--nImages',type=int,default=1000)
     args = parser.parse_args()
