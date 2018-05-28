@@ -110,7 +110,7 @@ class DRAGAN(BaseModel):
         with tf.variable_scope('discriminator', reuse=reuse):
             net = X
 
-            with slim.arg_scope([slim.conv2d], kernel_size=[5,5], stride=2, activation_fn=ops.lrelu):
+            with slim.arg_scope([slim.conv2d], kernel_size=[5,5], stride=2, activation_fn=ops.lrelu,normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
                 net = slim.conv2d(net, 64)
                 expected_shape(net, [32, 32, 64])
                 net = slim.conv2d(net, 128)
@@ -135,7 +135,7 @@ class DRAGAN(BaseModel):
             input_size = 4
             stride = 2
 
-            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, activation_fn=tf.nn.relu):
+            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, activation_fn=tf.nn.relu,normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
 
                 while input_size < (self.shape[0]//stride):
                     net = slim.conv2d_transpose(net, filter_num)
