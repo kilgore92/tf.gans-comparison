@@ -1,3 +1,5 @@
+#!/usr/bin/anaconda3/bin/python3
+# coding: utf-8
 import numpy as np
 import os
 import argparse
@@ -52,8 +54,44 @@ def create_database():
             dst = os.path.join(curr_out_dir,'gen','{}.jpg'.format(model_name))
             shutil.copy2(curr_image_file,dst)
 
+
+def sample_test_files(dir_path,n_samples=1000):
+    """
+    Given a director path, get a random sample of files
+    of size n_samples in a list
+    """
+    files = os.listdir(dir_path)
+    complete_paths = [os.path.join(dir_path,f) for f in files]
+    test_samples =  random.sample(complete_paths,n_samples)
+    return test_samples
+
+
+
+
+def split_train_test():
+    """
+    Split train and test set
+
+    """
+    base_dir = '/mnt/server-home/TUE/s162156/datasets/celebA'
+    train_file_path = os.path.join(base_dir,'celebA')
+
+    test_samples = sample_test_files(train_file_path)
+    target_dir = os.path.join(base_dir,'celebA_test')
+
+    if os.path.exists(target_dir):
+        shutil.rmtree(target_dir)
+
+    os.makedirs(target_dir)
+
+    for f in test_samples:
+        fname = f.split('/')[-1]
+        new_path = os.path.join(target_dir,fname)
+        shutil.move(f,new_path)
+
+
 if __name__ == '__main__':
-    create_database()
+    split_train_test()
 
 
 
