@@ -1,11 +1,11 @@
-# coding: utf-8
-
+#!/usr/bin/anaconda3/bin/python3
 import tensorflow as tf
 import numpy as np
 import scipy.misc
 import os
 import glob
-
+from argparse import ArgumentParser
+import shutil
 
 def _bytes_features(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
@@ -43,9 +43,9 @@ def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=1
 
     if tf.gfile.Exists(target_dir):
         print("{} is Already exists".format(target_dir))
-        return
-    else:
-        tf.gfile.MakeDirs(target_dir)
+        shutil.rmtree(target_dir)
+
+    tf.gfile.MakeDirs(target_dir)
 
     # get meta-data
     path_list = []
@@ -144,12 +144,15 @@ def export_images(db_path, out_dir, flat=False, limit=-1):
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument('--data',type=str,help='Location of data to be converted',required=True)
+    args = parser.parse_args()
     # CelebA
-    #convert('/home/ibhat/datasets/celebA', './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
-    #    exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
+    convert(args.data, './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
+        exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
 
      #LSUN
      #export_images('./tf.gans-comparison/data/lsun/bedroom_val_lmdb/',
      #    './tf.gans-comparison/data/lsun/bedroom_val_images/', flat=True)
-     convert('/home/ibhat/datasets/lsun/lsun/images', './data/lsun/bedroom_64_tfrecords', crop_size=[64, 64],
-            out_size=[64, 64], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')
+    # convert('/home/ibhat/datasets/lsun/lsun/images', './data/lsun/bedroom_64_tfrecords', crop_size=[64, 64],
+    #        out_size=[64, 64], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')
