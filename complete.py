@@ -1,8 +1,9 @@
+#!/usr/bin/anaconda3/bin/python3
+# coding: utf-8
 import tensorflow as tf
-from tqdm import tqdm
 import numpy as np
-import inputpipe as ip
 import glob, os, sys
+sys.path.append(os.getcwd())
 from argparse import ArgumentParser
 import utils, config
 import shutil
@@ -29,7 +30,6 @@ def build_parser():
     parser.add_argument('--eps', type=float, default=1e-8)
     parser.add_argument('--lr', type=float, default=0.005)
     parser.add_argument('--clipping',type=str,help='Options: standard or stochastic',default='stochastic')
-    parser.add_argument('--gpu',type=str,help='GPU ID to use (0 or 1)',default='0')
     parser.add_argument('--mode',type=str,help='Completion mode : inpainting or latent',default='inpainting')
     parser.add_argument('--source',type=str,help='Option for image for maps. train/test/inpaint',default='inpaint')
 
@@ -76,7 +76,7 @@ def get_image_paths(image_dir):
 
 def read_image(image_path,image_shape):
 
-    im = scipy.misc.imread(image_path, mode='RGB')
+    im = scipy.misc.imread(image_path)
     resized_image = center_crop(im,image_shape)
     resized_image = np.array(resized_image).astype(np.float32)
     return (resized_image/127.5 - 1)
@@ -156,7 +156,6 @@ def complete(args):
         assert(False)
 
     tf_config = tf.ConfigProto()
-    tf_config.gpu_options.visible_device_list = str(args.gpu)
 
     with tf.Session(config=tf_config) as sess:
         try:
@@ -225,6 +224,7 @@ def complete(args):
 
                 if i%100 == 0:
                     print('Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(idx,batch_idxs,i, np.mean(loss[0:batchSz])))
+                    sys.stdout.flush()
                     if args.mode == 'inpainting':
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                         completed = []
