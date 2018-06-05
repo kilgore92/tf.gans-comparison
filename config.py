@@ -5,7 +5,7 @@ model_zoo = ['DCGAN', 'LSGAN', 'WGAN', 'WGAN-GP', 'EBGAN', 'BEGAN', 'DRAGAN', 'C
 
 def get_model(mtype, name, training,image_shape=[64,64,3],batch_norm=True):
     model = None
-    if mtype == 'DCGAN':
+    if mtype == 'DCGAN' or mtype == 'DCGAN_SIM':
         model = dcgan.DCGAN
     elif mtype == 'LSGAN':
         model = lsgan.LSGAN
