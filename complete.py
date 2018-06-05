@@ -11,6 +11,7 @@ import scipy.misc
 from convert import center_crop
 import cv2
 import pickle
+from datetime import datetime
 slim = tf.contrib.slim
 
 def build_parser():
@@ -101,7 +102,6 @@ def complete(args):
     image_shape = [int(args.image_size),int(args.image_size),3]
 
 
-    latent_space_map = {}
     batch_idxs = int(np.ceil(nImgs/args.batch_size))
 
     maskType = args.maskType
@@ -223,8 +223,7 @@ def complete(args):
                 loss, g, G_imgs= sess.run(run, feed_dict=fd)
 
                 if i%100 == 0:
-                    print('Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(idx,batch_idxs,i, np.mean(loss[0:batchSz])))
-                    sys.stdout.flush()
+                    print('Timestamp: {:%Y-%m-%d %H:%M:%S} Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(datetime.now(),idx,batch_idxs,i, np.mean(loss[0:batchSz])))
                     if args.mode == 'inpainting':
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                         completed = []
@@ -245,6 +244,7 @@ def complete(args):
                             save_image(image=overlay[image_idx,:,:,:],path=save_path_overlay)
                             save_image(image=rescale_image(G_imgs[image_idx,:,:,:]),path=save_path_gz)
 
+
                 # Adam implementation
                 m_prev = np.copy(m)
                 v_prev = np.copy(v)
@@ -253,6 +253,9 @@ def complete(args):
                 m_hat = m / (1 - args.beta1 ** (i + 1))
                 v_hat = v / (1 - args.beta2 ** (i + 1))
                 zhats += - np.true_divide(args.lr * m_hat, (np.sqrt(v_hat) + args.eps))
+
+
+                sys.stdout.flush()
 
                 if args.clipping == 'standard':
                 # Standard Clipping
