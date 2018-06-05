@@ -196,10 +196,16 @@ if __name__ == "__main__":
     X = input_pipeline(dataset_pattern, batch_size=FLAGS.batch_size,
         num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs,image_size = int(FLAGS.image_size))
     # Arbitrarily sized crops will be resized to 64x64x3. Model will be constructed accordingly
+
     resized_image_shape = [64,64,3]
     batch_norm = True
+
     if FLAGS.name == 'dragan':
         batch_norm = False
+
+    if FLAGS.simultaneous == True and FLAGS.model == 'DCGAN':
+        FLAGS.name = FLAGS.model.lower() + '_sim'
+
     model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape,batch_norm=batch_norm)
     train(model=model, dataset=FLAGS.dataset,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
         n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew,simultaneous = FLAGS.simultaneous)

@@ -76,13 +76,25 @@ def split_train_test():
     base_dir = '/mnt/server-home/TUE/s162156/datasets/celebA'
     train_file_path = os.path.join(base_dir,'celebA')
 
-    test_samples = sample_test_files(train_file_path)
     target_dir = os.path.join(base_dir,'celebA_test')
 
     if os.path.exists(target_dir):
+
+        # Copy back the files into the train dir before removing this
+        complete_paths = [os.path.join(target_dir,f) for f in os.listdir(target_dir)]
+        for f in complete_paths:
+            new_path = os.path.join(train_file_path,f.split('/')[-1])
+            shutil.move(f,new_path)
+
+        # remove the test directory
         shutil.rmtree(target_dir)
 
     os.makedirs(target_dir)
+
+    # Sample from 'full' dataset
+    test_samples = sample_test_files(train_file_path)
+
+    target_dir = os.path.join(base_dir,'celebA_test')
 
     for f in test_samples:
         fname = f.split('/')[-1]
