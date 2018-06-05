@@ -267,17 +267,6 @@ def complete(args):
                     print('Invalid clipping mode')
                     assert(False)
 
-            # Save the latent space vector
-            for path,indx in zip(batch_files,range(len(batch_files))):
-                if args.source == 'inpaint':
-                    latent_space_map[l + indx] = zhats[indx] # Index by output folder ID
-                else:
-                    latent_space_map[path] = zhats[indx] # Index by file path
-
-            # Save every 10 batches batch completed so that if things go wrong, no need to start from scratch !!
-            with open(map_file,'wb') as f:
-                pickle.dump(latent_space_map,f)
-
 
 if __name__ == '__main__':
     parser = build_parser()
