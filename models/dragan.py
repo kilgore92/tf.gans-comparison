@@ -11,11 +11,16 @@ It is also similar to DCGAN except for gradient penalty.
 '''
 
 class DRAGAN(BaseModel):
-    def __init__(self, name, training, D_lr=1e-4, G_lr=1e-4, image_shape=[64, 64, 3], z_dim=100):
+    def __init__(self, name, training, D_lr=1e-4, G_lr=1e-4, image_shape=[64, 64, 3], z_dim=100,batch_norm=False):
         self.beta1 = 0.5
         self.beta2 = 0.9
         self.ld = 10. # lambda
         self.C = 0.5
+        # Switch BN on/off
+        self.norm_fn = None
+        if batch_norm == True:
+            self.norm_fn = slim.batch_norm
+
         super(DRAGAN, self).__init__(name=name, training=training, D_lr=D_lr, G_lr=G_lr,
             image_shape=image_shape, z_dim=z_dim)
 
@@ -104,13 +109,11 @@ class DRAGAN(BaseModel):
             self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
             self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
 
-    # DRAGAN does not use BN
-    # DCGAN architecture
     def _discriminator(self, X, reuse=False):
         with tf.variable_scope('discriminator', reuse=reuse):
             net = X
 
-            with slim.arg_scope([slim.conv2d], kernel_size=[5,5], stride=2, activation_fn=ops.lrelu,normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
+            with slim.arg_scope([slim.conv2d], kernel_size=[5,5], stride=2, activation_fn=ops.lrelu,normalizer_fn=self.norm_fn, normalizer_params=self.bn_params):
                 net = slim.conv2d(net, 64)
                 expected_shape(net, [32, 32, 64])
                 net = slim.conv2d(net, 128)
@@ -127,6 +130,7 @@ class DRAGAN(BaseModel):
             return prob, logits
 
     def _generator(self, z, reuse=False):
+
         with tf.variable_scope('generator', reuse=reuse):
             net = z
             net = slim.fully_connected(net, 4*4*1024, activation_fn=tf.nn.relu)
@@ -135,13 +139,14 @@ class DRAGAN(BaseModel):
             input_size = 4
             stride = 2
 
-            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, activation_fn=tf.nn.relu,normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
+            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, activation_fn=tf.nn.relu,normalizer_fn=self.norm_fn, normalizer_params=self.bn_params):
 
                 while input_size < (self.shape[0]//stride):
                     net = slim.conv2d_transpose(net, filter_num)
                     expected_shape(net, [input_size*stride, input_size*stride, filter_num])
                     filter_num = filter_num//2
                     input_size = input_size*stride
+
                 net = slim.conv2d_transpose(net, 3, activation_fn=tf.nn.tanh, normalizer_fn=None)
                 expected_shape(net, [self.shape[0], self.shape[1], 3])
                 return net

@@ -3,7 +3,7 @@ from models import *
 
 model_zoo = ['DCGAN', 'LSGAN', 'WGAN', 'WGAN-GP', 'EBGAN', 'BEGAN', 'DRAGAN', 'CoulombGAN']
 
-def get_model(mtype, name, training,image_shape=[64,64,3]):
+def get_model(mtype, name, training,image_shape=[64,64,3],batch_norm=True):
     model = None
     if mtype == 'DCGAN':
         model = dcgan.DCGAN
@@ -17,8 +17,9 @@ def get_model(mtype, name, training,image_shape=[64,64,3]):
         model = ebgan.EBGAN
     elif mtype == 'BEGAN':
         model = began.BEGAN
-    elif mtype == 'DRAGAN':
+    elif mtype == 'DRAGAN' or mtype == 'DRAGAN_BN':
         model = dragan.DRAGAN
+        return model(name=name, training=training,image_shape=image_shape,batch_norm=batch_norm)
     elif mtype == 'COULOMBGAN':
         model = coulombgan.CoulombGAN
     elif mtype == 'DCGAN-GP':
