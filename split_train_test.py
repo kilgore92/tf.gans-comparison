@@ -2,24 +2,35 @@
 # coding: utf-8
 import numpy as np
 import os
-import argparse
+from argparse import ArgumentParser
 import shutil
 import random
 import sys
 
-def create_database():
+def build_parser():
 
     """
     Reads the files created by the reconstruction API to create a flat hierarchy
     Each folder generated contains one original image + images in-painted by different models
 
     """
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     parser.add_argument('--outDir',type=str,default = 'database')
     parser.add_argument('--rootDir',type=str,default='completions_stochastic_center')
     parser.add_argument('--dataset',type=str,default = 'celeba')
     parser.add_argument('--nImages',type=int,default=1000)
+    parser.add_argument('--db',action='store_true',help='Create database from in-paintings or split the dataset into train/test',default=False)
+    parser.add_argument('--data',type=str,default='/mnt/server-home/TUE/s162156/datasets/celebA')
     args = parser.parse_args()
+    return args
+
+def create_database(args):
+    """
+    Merge in-paintings from different models into a hierarchical folder
+    structure
+
+    """
+
 
     if (os.path.exists(args.outDir)):
         # Remove it
@@ -27,7 +38,7 @@ def create_database():
 
     os.makedirs(args.outDir)
 
-    models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan']
+    models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan','dragan_bn','dcgan_sim']
     source_dirs = []
     for model in models:
         dir_path = os.path.join(os.getcwd(),str(args.rootDir),str(model),str(args.dataset))
@@ -68,15 +79,14 @@ def sample_test_files(dir_path,n_samples=1000):
 
 
 
-def split_train_test():
+def split_train_test(args):
     """
     Split train and test set
 
     """
-    base_dir = '/mnt/server-home/TUE/s162156/datasets/celebA'
-    train_file_path = os.path.join(base_dir,'celebA')
+    train_file_path = os.path.join(args.data,'celebA')
 
-    target_dir = os.path.join(base_dir,'celebA_test')
+    target_dir = os.path.join(args.data,'celebA_test')
 
     if os.path.exists(target_dir):
 
@@ -102,8 +112,15 @@ def split_train_test():
         shutil.move(f,new_path)
 
 
+
 if __name__ == '__main__':
-    split_train_test()
+
+    args = build_parser()
+
+    if args.db is True:
+        create_database(args)
+
+    split_train_test(args)
 
 
 
