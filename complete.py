@@ -166,7 +166,12 @@ def complete(args):
         # Get the model
         # If Training is set to false, the discriminator ops graph is not built.
         # The discriminator graph is used to compute the in-painting loss. Hacked it now, please FIX THIS - TODO
-        model = config.get_model(args.model.upper(),args.model.lower(), training=True)
+
+        if args.model.lower() == 'dragan': # Pick the non-BN version of DRAGAN
+            model = config.get_model(args.model.upper(),args.model.lower(), training=True,batch_norm=False)
+        else:
+            model = config.get_model(args.model.upper(),args.model.lower(), training=True)
+
         restorer = tf.train.Saver()
 
         checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',args.dataset.lower(),args.model.lower())
