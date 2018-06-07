@@ -104,8 +104,6 @@ def split_train_test(args):
     # Sample from 'full' dataset
     test_samples = sample_test_files(train_file_path)
 
-    target_dir = os.path.join(base_dir,'celebA_test')
-
     for f in test_samples:
         fname = f.split('/')[-1]
         new_path = os.path.join(target_dir,fname)
@@ -119,8 +117,8 @@ if __name__ == '__main__':
 
     if args.db is True:
         create_database(args)
-
-    split_train_test(args)
+    else:
+        split_train_test(args)
 
 
 
