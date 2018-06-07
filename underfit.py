@@ -1,6 +1,8 @@
+#!/usr/bin/anaconda3/bin/python3
 import numpy as np
 from scipy.spatial.distance import cosine
 import glob, os, sys
+sys.path.append(os.getcwd())
 from argparse import ArgumentParser
 import utils, config
 import shutil
@@ -16,7 +18,7 @@ import pandas as pd
 
 image_size = 64
 
-test_images_root = '/home/ibhat/gans_compare/tf.gans-comparison/images_db'
+test_images_root = '/home/TUE/s162156/gans_compare/tf.gans-comparison/imagesdb'
 
 def build_parser():
     parser = ArgumentParser()
@@ -174,11 +176,12 @@ def analyze_vectors(args):
 
         print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(source_img,train_inp_min_cosine,test_inp_cosine))
 
+        sys.stdout.flush()
+
         testImg = read_and_crop_image(source_img)
         maskImg = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'masked.jpg'))
 
         # Inpaintings -- Buggy - Blended - Overlay
-        inpImg = read_and_crop_image(get_inpainting_path(image_idx,args.model)) # buggy image
         inpImg_blend = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images','gen_1400.jpg'))
         inpImg_overlay = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images_overlay','gen_1400.jpg'))
 
@@ -187,7 +190,6 @@ def analyze_vectors(args):
 
         image_list.append(testImg) # Test Image -- Complete
         image_list.append(maskImg) # Masked
-        image_list.append(inpImg) # Inpainting -- buggy
         image_list.append(inpImg_blend) # Inpainting -- blend
         image_list.append(inpImg_overlay) # Inpainting -- overlay
         image_list.append(Gz) # G(z_inpainting)
