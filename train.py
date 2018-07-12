@@ -160,9 +160,9 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         finally:
             # Study the trend of Disc gradient norms over the iterations for wgan-gp/dragan/dragan with BN
             if store_grads is True:
-                save_file = os.path.join(ckpt_path,'d_grads.pkl')
+                save_file = os.path.join(ckpt_path,'{}_grads.pkl'.format(model.name))
                 with open(save_file,'wb') as f:
-                    pickle.dump(grads,f)
+                    pickle.dump(d_grad_norm,f)
 
             coord.request_stop()
 
