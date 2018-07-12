@@ -79,6 +79,7 @@ class DCGAN_GP(BaseModel):
             self.D_loss = D_loss
             self.fake_sample = G
             self.global_step = global_step
+            self.D_grad_norm = D_xhat_grad_norm
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')

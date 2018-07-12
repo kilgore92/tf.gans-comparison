@@ -62,7 +62,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
 
     os.makedirs(sample_dir)
     d_grad_norm = []
-    if model.name == 'wgan-gp' or model.name == 'dragan' or model.name == 'dragan-bn':
+    if model.name == 'wgan-gp' or model.name == 'dragan' or model.name == 'dragan-bn' or model.name == 'dcgan-gp':
         store_grads = True
 
     config = tf.ConfigProto()
