@@ -86,6 +86,7 @@ class WGAN_GP(BaseModel):
             self.D_loss = C_loss
             self.fake_sample = G
             self.global_step = global_step
+            self.D_grad_norm = C_xhat_grad_norm
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')

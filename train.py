@@ -47,6 +47,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
 
     summary_path = os.path.join('./summary/', dataset, model.name)
     ckpt_path = os.path.join('./checkpoints', dataset, model.name)
+    store_grads = False
     if renew:
         if os.path.exists(summary_path):
             tf.gfile.DeleteRecursively(summary_path)
@@ -61,7 +62,8 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
 
     os.makedirs(sample_dir)
     d_grad_norm = []
-    g_grad_norm = []
+    if model.name == 'wgan-gp' or model.name == 'dragan' or model.name == 'dragan-bn':
+        store_grads = True
 
     config = tf.ConfigProto()
     with tf.Session(config=config) as sess:
@@ -140,13 +142,11 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                 if global_step % 10 == 0:
                     #Monitor losses
                     G_loss,D_loss = sess.run([model.G_loss,model.D_loss],feed_dict={model.X:batch_X,model.z:batch_z})
-                    if model.name == 'dcgan-local':
-                        G_grad_norm,D_grad_norm = sess.run([model.G_grad_sq,model.D_grad_sq],feed_dict={model.X:batch_X,model.z:batch_z})
-                        print('Global Step {} :: Generator loss = {} Discriminator loss = {} Average G grad norm : {} Average D grad norm : {}'.format(global_step,G_loss,D_loss,G_grad_norm,D_grad_norm))
-                        d_grad_norm.append(D_grad_norm)
-                        g_grad_norm.append(G_grad_norm)
-                    else:
-                        print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
+
+                    if store_grads is True:
+                        d_grad_norm.append(sess.run(model.D_grad_norm,feed_dict = {model.X : batch_X, model.z : batch_z}))
+
+                    print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
 
                     sys.stdout.flush()
 
@@ -156,14 +156,13 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
 
         except tf.errors.OutOfRangeError:
             print('\nDone -- epoch limit reached\n')
+
         finally:
-            # Study the trend of gradient norms over the iterations
-            grads = {}
-            grads['Discriminator'] = d_grad_norm
-            grads['Generator'] = g_grad_norm
-            save_file = os.path.join(ckpt_path,'grads.pkl')
-            with open(save_file,'wb') as f:
-                pickle.dump(grads,f)
+            # Study the trend of Disc gradient norms over the iterations for wgan-gp/dragan/dragan with BN
+            if store_grads is True:
+                save_file = os.path.join(ckpt_path,'d_grads.pkl')
+                with open(save_file,'wb') as f:
+                    pickle.dump(grads,f)
 
             coord.request_stop()
 
