@@ -57,7 +57,7 @@ class DRAGAN(BaseModel):
             # Originally, the paper suggested D_xhat_prob instead of D_xhat_logits.
             # But D_xhat_prob (D with sigmoid) causes numerical problem (NaN in gradient).
             D_xhat_grad = tf.gradients(D_xhat_logits, xhat)[0] # gradient of D(x_hat)
-            D_xhat_grad_norm = tf.norm(D_xhat_grad, axis=1)  # l2 norm
+            D_xhat_grad_norm = tf.norm(slim.flatten(D_xhat_grad), axis=1)  # l2 norm
             # D_xhat_grad_norm = tf.sqrt(tf.reduce_sum(tf.square(D_xhat_grad), axis=[1]))
             GP = self.ld * tf.reduce_mean(tf.square(D_xhat_grad_norm - 1.))
             D_loss += GP
