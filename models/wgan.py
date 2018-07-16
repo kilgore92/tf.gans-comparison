@@ -40,6 +40,13 @@ class WGAN(BaseModel):
             C_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/critic/')
             G_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/generator/')
 
+            # Gradient Penalty (GP)
+            eps = tf.random_uniform(shape=[tf.shape(X)[0], 1, 1, 1], minval=0., maxval=1.)
+            x_hat = eps*X + (1.-eps)*G
+            C_xhat = self._critic(x_hat, reuse=True)
+            C_xhat_grad = tf.gradients(C_xhat, x_hat)[0] # gradient of D(x_hat)
+            C_xhat_grad_norm = tf.norm(slim.flatten(C_xhat_grad), axis=1)  # l2 norm
+
             # In the paper, critic networks has been trained n_critic times for each training step.
             # Here I adjust learning rate instead.
             with tf.control_dependencies(C_update_ops):
@@ -92,6 +99,8 @@ class WGAN(BaseModel):
             self.D_loss = C_loss
             self.fake_sample = G
             self.global_step = global_step
+            self.D_grad_norm = C_xhat_grad_norm
+
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')

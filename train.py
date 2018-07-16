@@ -45,9 +45,13 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
     print("steps per epoch: {}\n".format(n_examples//batch_size))
     n_critic = 5 # Critic training iterations per generator update for WGAN and WGAN-GP
 
+    if model.name == 'dcgan-cons':
+        store_grads = False
+    else:
+        store_grads = True
+
     summary_path = os.path.join('./summary/', dataset, model.name)
     ckpt_path = os.path.join('./checkpoints', dataset, model.name)
-    store_grads = False
     if renew:
         if os.path.exists(summary_path):
             tf.gfile.DeleteRecursively(summary_path)
@@ -60,10 +64,13 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
     if os.path.exists(sample_dir):
         shutil.rmtree(sample_dir)
 
+
     os.makedirs(sample_dir)
-    d_grad_norm = []
-    if model.name == 'wgan-gp' or model.name == 'dragan' or model.name == 'dragan-bn' or model.name == 'dcgan-gp':
-        store_grads = True
+
+    if store_grads is True:
+        d_grad_norm = []
+        if model.name == 'dcgan': # For DCGAN, save both the value of both DRAGAN and WGAN-GP term
+            d_grad_norm_gp = []
 
     config = tf.ConfigProto()
     with tf.Session(config=config) as sess:
@@ -142,9 +149,10 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                 if global_step % 10 == 0:
                     #Monitor losses
                     G_loss,D_loss = sess.run([model.G_loss,model.D_loss],feed_dict={model.X:batch_X,model.z:batch_z})
-
                     if store_grads is True:
                         d_grad_norm.append(sess.run(model.D_grad_norm,feed_dict = {model.X : batch_X, model.z : batch_z}))
+                        if model.name == 'dcgan':
+                            d_grad_norm_gp.append(sess.run(model.D_grad_norm_gp,feed_dict = {model.X : batch_X, model.z : batch_z}))
 
                     print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
 
@@ -158,11 +166,15 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
             print('\nDone -- epoch limit reached\n')
 
         finally:
-            # Study the trend of Disc gradient norms over the iterations for wgan-gp/dragan/dragan with BN
-            if store_grads is True:
-                save_file = os.path.join(ckpt_path,'{}_grads.pkl'.format(model.name))
+            save_file = os.path.join(ckpt_path,'{}_grads.pkl'.format(model.name))
+            with open(save_file,'wb') as f:
+                pickle.dump(d_grad_norm,f)
+
+            if model.name == 'dcgan':
+                save_file = os.path.join(ckpt_path,'{}_grads_gp.pkl'.format(model.name))
                 with open(save_file,'wb') as f:
-                    pickle.dump(d_grad_norm,f)
+                    pickle.dump(d_grad_norm_gp,f)
+
 
             coord.request_stop()
 

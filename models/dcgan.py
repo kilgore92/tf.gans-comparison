@@ -36,6 +36,31 @@ class DCGAN(BaseModel):
             D_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/D/')
             G_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/G/')
 
+            # DRAGAN term
+            shape = tf.shape(X)
+            eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
+            x_mean, x_var = tf.nn.moments(X, axes=[0,1,2,3])
+            x_std = tf.sqrt(x_var) # magnitude of noise decides the size of local region
+            noise = 0.5*x_std*eps # delta in paper
+            # Author suggested U[0,1] in original paper, but he admitted it is bug in github
+            # (https://github.com/kodalinaveen3/DRAGAN). It should be two-sided.
+            alpha = tf.random_uniform(shape=[shape[0], 1, 1, 1], minval=-1., maxval=1.)
+            xhat = tf.clip_by_value(X + alpha*noise, -1., 1.) # x_hat should be in the space of X
+
+            D_xhat_prob, D_xhat_logits = self._discriminator(xhat, reuse=True)
+            # Originally, the paper suggested D_xhat_prob instead of D_xhat_logits.
+            # But D_xhat_prob (D with sigmoid) causes numerical problem (NaN in gradient).
+            D_xhat_grad = tf.gradients(D_xhat_logits, xhat)[0] # gradient of D(x_hat)
+            D_xhat_grad_norm = tf.norm(slim.flatten(D_xhat_grad), axis=1)  # l2 norm
+
+            # WGAN-GP term
+            eps = tf.random_uniform(shape=[tf.shape(X)[0], 1, 1, 1], minval=0., maxval=1.)
+            x_hat_gp = eps*X + (1.-eps)*G
+            D_xhat_gp = self._discriminator(x_hat_gp, reuse=True)
+            D_xhat_grad_gp = tf.gradients(D_xhat_gp, x_hat_gp)[0] # gradient of D(x_hat)
+            D_xhat_grad_norm_gp = tf.norm(slim.flatten(D_xhat_grad_gp), axis=1)  # l2 norm
+
+
             with tf.control_dependencies(D_update_ops):
                 D_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
                     minimize(D_loss, var_list=D_vars)
@@ -68,6 +93,8 @@ class DCGAN(BaseModel):
             self.D_loss = D_loss
             self.fake_sample = G
             self.global_step = global_step
+            self.D_grad_norm = D_xhat_grad_norm
+            self.D_grad_norm_gp = D_xhat_grad_norm_gp
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')
