@@ -26,8 +26,10 @@ def get_model(mtype, name, training,image_shape=[64,64,3],batch_norm=True):
         model = dcgan_gp.DCGAN_GP
     elif mtype == 'WGAN-DRAGAN':
         model = wgan_dragan.WGAN_DRAGAN
-    elif mtype == 'DCGAN-CONS':
+    elif mtype == 'DCGAN-CONS' or mtype == 'DCGAN-CONS_BN':
         model = dcgan_consensus.DCGAN_CONS
+        return model(name=name,training=training,image_shape=image_shape,batch_norm=batch_norm)
+
     elif mtype == 'DCGAN-LOCAL':
         model = dcgan_local.DCGAN_LOCAL
     else:

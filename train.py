@@ -45,7 +45,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
     print("steps per epoch: {}\n".format(n_examples//batch_size))
     n_critic = 5 # Critic training iterations per generator update for WGAN and WGAN-GP
 
-    if model.name == 'dcgan-cons':
+    if model.name == 'dcgan-cons' or 'dcgan-cons_bn':
         store_grads = False
     else:
         store_grads = True
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     resized_image_shape = [64,64,3]
     batch_norm = True
 
-    if FLAGS.name == 'dragan':
+    if FLAGS.name == 'dragan' or FLAGS.name == 'dcgan-cons':
         batch_norm = False
 
     if FLAGS.simultaneous == True and FLAGS.model == 'DCGAN':
