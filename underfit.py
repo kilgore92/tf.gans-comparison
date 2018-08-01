@@ -96,9 +96,12 @@ def read_dict(root_dir,model):
     with open(os.path.join(root_dir,'test_emb_dict.pkl'),'rb') as f:
         test_emb_dict = pickle.load(f)
 
-    fname = os.path.join(root_dir,'{}_emb_dict.pkl'.format(model.lower()))
-    with open(fname,'rb') as f:
-        inpaint_emb_dict = pickle.load(f)
+    if model is not None:
+        fname = os.path.join(root_dir,'{}_emb_dict.pkl'.format(model.lower()))
+        with open(fname,'rb') as f:
+            inpaint_emb_dict = pickle.load(f)
+    else:
+        inpaint_emb_dict = None
 
     return train_emb_dict,test_emb_dict,inpaint_emb_dict
 
