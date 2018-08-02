@@ -15,7 +15,7 @@ from convert import center_crop
 test_image_root = '/home/TUE/s162156/gans_compare/tf.gans-comparison/imagesdb'
 crop_l = 16
 crop_u = 48
-N_IMAGES = 1
+N_IMAGES = 10
 
 def build_parser():
     parser = ArgumentParser()
@@ -53,7 +53,7 @@ def synthetic_exp(emb_path):
 
     # Create pandas dataframe
     col_stacked_data = np.column_stack((np.asarray(nn_distances_overfit),np.asarray(nn_distances_gen)))
-    df = pd.Dataframe(data=col_stacked_data,columns = ['Overfitting','Generalizing'])
+    df = pd.DataFrame(data=col_stacked_data,columns = ['Overfitting','Generalizing'])
     df.to_pickle(path='synthetic.pkl')
 
 def find_closest_training_image_pixel_space(test_img_path,test_emb,train_emb_dict):
