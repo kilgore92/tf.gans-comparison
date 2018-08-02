@@ -167,7 +167,7 @@ def complete(args):
         # If Training is set to false, the discriminator ops graph is not built.
         # The discriminator graph is used to compute the in-painting loss. Hacked it now, please FIX THIS - TODO
 
-        if args.model.lower() == 'dragan': # Pick the non-BN version of DRAGAN
+        if args.model.lower() == 'dragan' or args.model.lower()=='dcgan-cons': # Pick the non-BN version of DRAGAN and DCGAN-CONS
             model = config.get_model(args.model.upper(),args.model.lower(), training=True,batch_norm=False)
         else:
             model = config.get_model(args.model.upper(),args.model.lower(), training=True)
