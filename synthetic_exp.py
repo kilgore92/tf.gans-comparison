@@ -15,7 +15,7 @@ from convert import center_crop
 test_image_root = '/home/TUE/s162156/gans_compare/tf.gans-comparison/imagesdb'
 crop_l = 16
 crop_u = 48
-N_IMAGES = 10
+N_IMAGES = 50
 
 def build_parser():
     parser = ArgumentParser()
