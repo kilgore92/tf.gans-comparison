@@ -5,8 +5,10 @@ This repository was forked from [here](https://github.com/khanrc/tf.gans-compari
 
 The following packages can be installed using pip/conda. I used the Anaconda package manager and used the following YAML file to install dependencies:
 ```
-name: <environment name>                                                    dependencies:                                                                                                                                   
-    - numpy                                                                                                                                                               
+name: <environment name>
+
+dependencies:                                                                                                                                   
+    - numpy                                                                                                                                                   
     - pandas                                                                                                                                                              
     - tensorflow-gpu                                                                                                                                                          
     - scipy                                                                                                                                                               
