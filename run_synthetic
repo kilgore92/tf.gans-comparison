@@ -1,0 +1,4 @@
+#!/bin/bash
+source activate gans
+python  synthetic_exp.py --emb /home/TUE/s162156/facenet/facenet/embeddings 
+source deactivate gans
