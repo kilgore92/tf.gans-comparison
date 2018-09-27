@@ -10,6 +10,9 @@ import utils, config
 import shutil
 import scipy.misc
 import pickle
+from tensorflow.examples.tutorials.mnist import input_data
+
+MNIST_DIR = '/mnt/server-home/TUE/s162156/datasets/mnist'
 
 def build_parser():
     parser = ArgumentParser()
@@ -52,6 +55,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
 
     summary_path = os.path.join('./summary/', dataset, model.name)
     ckpt_path = os.path.join('./checkpoints', dataset, model.name)
+
     if renew:
         if os.path.exists(summary_path):
             tf.gfile.DeleteRecursively(summary_path)
@@ -61,6 +65,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         tf.gfile.MakeDirs(ckpt_path)
 
     sample_dir = os.path.join(os.getcwd(),'samples',dataset.lower(),model.name)
+
     if os.path.exists(sample_dir):
         shutil.rmtree(sample_dir)
 
@@ -73,6 +78,10 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
             d_grad_norm_gp = []
 
     config = tf.ConfigProto()
+
+    if dataset == 'mnist':
+        mnist = input_data.read_data_sets(MNIST_DIR,reshape=[])
+
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer()) # for epochs
@@ -130,7 +139,14 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                 # model.all_summary_op contains histogram summary and image summary which are heavy op
                 summary_op = model.summary_op if global_step % 100 == 0 else model.all_summary_op
 
-                batch_X = sess.run(input_op)
+                if dataset == 'celeba':
+                    batch_X = sess.run(input_op)
+                else:
+                    batch,_ = mnist.train.next_batch(batch_size)
+                    batch = np.subtract(np.divide(batch,0.5),0.5)
+                    batch = tf.image.resize_images(batch,[32,32]).eval()
+                    batch_X = batch
+
                 batch_z = sample_z([batch_size, model.z_dim])
 
                 if simultaneous is False: #Alternating Gradient Descent
@@ -204,11 +220,14 @@ if __name__ == "__main__":
     # get information for dataset
     dataset_pattern, n_examples = config.get_dataset(FLAGS.dataset)
     # input pipeline
-    X = input_pipeline(dataset_pattern, batch_size=FLAGS.batch_size,
-        num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs,image_size = int(FLAGS.image_size))
-    # Arbitrarily sized crops will be resized to 64x64x3. Model will be constructed accordingly
+    if FLAGS.dataset == 'celeba':
+        X = input_pipeline(dataset_pattern, batch_size=FLAGS.batch_size,
+            num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs,image_size = int(FLAGS.image_size))
+        resized_image_shape = [64,64,3]
+    else: # MNIST or Fashion-MNIST
+        X = None
+        resized_image_shape = [32,32,1]
 
-    resized_image_shape = [64,64,3]
     batch_norm = True
 
     if FLAGS.name == 'dragan' or FLAGS.name == 'dcgan-cons':
@@ -218,5 +237,6 @@ if __name__ == "__main__":
         FLAGS.name = FLAGS.model.lower() + '_sim'
 
     model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape,batch_norm=batch_norm)
+
     train(model=model, dataset=FLAGS.dataset,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
         n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew,simultaneous = FLAGS.simultaneous)

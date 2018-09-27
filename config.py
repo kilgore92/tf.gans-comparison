@@ -51,6 +51,9 @@ def get_dataset(dataset_name):
     elif dataset_name == 'lsun':
         path = lsun_bedroom_64
         n_examples = 3033042
+    elif dataset_name == 'mnist':
+        path = None
+        n_examples = 50000
     else:
         raise ValueError('{} is does not supported. dataset must be celeba or lsun.'.format(dataset_name))
 

@@ -143,7 +143,7 @@ class DCGAN(BaseModel):
             filter_num = 512
             input_size = 4
             stride = 2
-            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[5,5], stride=stride, padding='SAME',
+            with slim.arg_scope([slim.conv2d_transpose], kernel_size=[4,4], stride=stride, padding='SAME',
                 activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
                 while input_size < (self.shape[0]//stride):
                     net = slim.conv2d_transpose(net, filter_num)
@@ -151,7 +151,7 @@ class DCGAN(BaseModel):
                     filter_num = filter_num//2
                     input_size = input_size*stride
 
-                net = slim.conv2d_transpose(net, 3, activation_fn=tf.nn.tanh, normalizer_fn=None)
-                expected_shape(net, [self.shape[0], self.shape[1], 3])
+                net = slim.conv2d_transpose(net, self.shape[2], activation_fn=tf.nn.tanh, normalizer_fn=None)
+                expected_shape(net, [self.shape[0], self.shape[1], self.shape[2]])
 
                 return net
