@@ -143,7 +143,6 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                     batch_X = sess.run(input_op)
                 else:
                     batch,_ = mnist.train.next_batch(batch_size)
-                    print(batch[0,:])
                     batch = (batch-0.5)/0.5
                     batch = tf.image.resize_images(batch,[32,32]).eval()
                     batch_X = batch
@@ -211,6 +210,7 @@ def save_samples(sess,val_z,model,dir_name,global_step,shape,dataset):
         fake_samples = 255*((fake_samples + 1.) / 2.)
     else:
         fake_samples = fake_samples*0.5 + 0.5
+        fake_samples = np.reshape(fake_samples,(fake_samples.shape[0],fake_samples.shape[1],fake_samples.shape[2]))
 
     merged_samples = utils.merge(fake_samples, size=shape)
     fn = "{:0>6d}.png".format(global_step)
