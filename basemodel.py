@@ -10,7 +10,7 @@ slim = tf.contrib.slim
 class BaseModel(object):
     FAKE_MAX_OUTPUT = 6
 
-    def __init__(self, name, training, D_lr, G_lr, image_shape=[64, 64, 3], z_dim=100):
+    def __init__(self, name, training, D_lr, G_lr, image_shape=[64, 64, 3], z_dim=100,dataset='celeba'):
         self.name = name
         self.shape = image_shape
         self.bn_params = {
@@ -23,6 +23,7 @@ class BaseModel(object):
         self.D_lr = D_lr
         self.G_lr = G_lr
         self.args = vars(self).copy() # dict
+        self.dataset = dataset
 
         if training == True:
             self._build_train_graph()

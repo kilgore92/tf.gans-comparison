@@ -24,7 +24,7 @@ def build_parser():
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
     parser.add_argument('--image_size',default=64)
-    parser.add_argument('--ckpt_step', default=5000, help='# of steps for saving checkpoint (default: 5000)', type=int)
+    parser.add_argument('--ckpt_step', default=500, help='# of steps for saving checkpoint (default: 5000)', type=int)
     parser.add_argument('--renew', action='store_true', help='train model from scratch - \
         clean saved checkpoints and summaries', default=False)
     parser.add_argument('--simultaneous', action='store_true', help='Choose between alternate GD and simultaeneous GD', default=False)
@@ -143,7 +143,8 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                     batch_X = sess.run(input_op)
                 else:
                     batch,_ = mnist.train.next_batch(batch_size)
-                    batch = np.subtract(np.divide(batch,0.5),0.5)
+                    print(batch[0,:])
+                    batch = (batch-0.5)/0.5
                     batch = tf.image.resize_images(batch,[32,32]).eval()
                     batch_X = batch
 
@@ -176,20 +177,21 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
 
                     if global_step % ckpt_step == 0:
                         saver.save(sess, ckpt_path+'/'+model.name, global_step=global_step)
-                        save_samples(sess=sess,val_z = val_z ,model=model,dir_name = sample_dir,global_step=global_step,shape=[16,8])
+                        save_samples(sess=sess,val_z = val_z ,model=model,dir_name = sample_dir,global_step=global_step,shape=[16,8],dataset=dataset)
 
         except tf.errors.OutOfRangeError:
             print('\nDone -- epoch limit reached\n')
 
         finally:
-            save_file = os.path.join(ckpt_path,'{}_grads.pkl'.format(model.name))
-            with open(save_file,'wb') as f:
-                pickle.dump(d_grad_norm,f)
-
-            if model.name == 'dcgan':
-                save_file = os.path.join(ckpt_path,'{}_grads_gp.pkl'.format(model.name))
+            if store_grads == True: # Store gradient norms in a pkl file
+                save_file = os.path.join(ckpt_path,'{}_grads.pkl'.format(model.name))
                 with open(save_file,'wb') as f:
-                    pickle.dump(d_grad_norm_gp,f)
+                    pickle.dump(d_grad_norm,f)
+
+                if model.name == 'dcgan':
+                    save_file = os.path.join(ckpt_path,'{}_grads_gp.pkl'.format(model.name))
+                    with open(save_file,'wb') as f:
+                        pickle.dump(d_grad_norm_gp,f)
 
 
             coord.request_stop()
@@ -197,13 +199,19 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         coord.join(threads)
         summary_writer.close()
 
-def save_samples(sess,val_z,model,dir_name,global_step,shape):
+def save_samples(sess,val_z,model,dir_name,global_step,shape,dataset):
     """
     Function to save samples during training
 
     """
     fake_samples = sess.run(model.fake_sample, {model.z: val_z})
-    fake_samples = 255*((fake_samples + 1.) / 2.)
+
+    #Bring the images to original display range
+    if dataset != 'mnist':
+        fake_samples = 255*((fake_samples + 1.) / 2.)
+    else:
+        fake_samples = fake_samples*0.5 + 0.5
+
     merged_samples = utils.merge(fake_samples, size=shape)
     fn = "{:0>6d}.png".format(global_step)
     scipy.misc.imsave(os.path.join(dir_name, fn), merged_samples)
@@ -236,7 +244,7 @@ if __name__ == "__main__":
     if FLAGS.simultaneous == True and FLAGS.model == 'DCGAN':
         FLAGS.name = FLAGS.model.lower() + '_sim'
 
-    model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape,batch_norm=batch_norm)
+    model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape,batch_norm=batch_norm,dataset = FLAGS.dataset)
 
     train(model=model, dataset=FLAGS.dataset,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
         n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew,simultaneous = FLAGS.simultaneous)

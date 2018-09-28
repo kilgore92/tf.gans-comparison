@@ -3,7 +3,7 @@ from models import *
 
 model_zoo = ['DCGAN', 'LSGAN', 'WGAN', 'WGAN-GP', 'EBGAN', 'BEGAN', 'DRAGAN', 'CoulombGAN']
 
-def get_model(mtype, name, training,image_shape=[64,64,3],batch_norm=True):
+def get_model(mtype, name, training,image_shape=[64,64,3],batch_norm=True,dataset='celeba'):
     model = None
     if mtype == 'DCGAN' or mtype == 'DCGAN_SIM':
         model = dcgan.DCGAN
@@ -37,7 +37,7 @@ def get_model(mtype, name, training,image_shape=[64,64,3],batch_norm=True):
 
     assert model, mtype + ' is work in progress'
 
-    return model(name=name, training=training,image_shape=image_shape)
+    return model(name=name, training=training,image_shape=image_shape,dataset=dataset)
 
 
 def get_dataset(dataset_name):
