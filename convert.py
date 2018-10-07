@@ -7,6 +7,10 @@ import glob
 from argparse import ArgumentParser
 import shutil
 
+
+MNIST_IMAGES = '/home/TUE/s162156/datasets/mnist'
+CELEBA_IMAGES = '/home/TUE/s162156/datasets/celebA/celebA'
+
 def _bytes_features(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
 
@@ -77,7 +81,11 @@ def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=1
             writer = tf.python_io.TFRecordWriter(tfrecord_path)
 
         # mode='RGB' read even grayscale image as RGB shape
-        im = scipy.misc.imread(path, mode='RGB')
+        if tfrecords_prefix == 'celeba':
+            im = scipy.misc.imread(path, mode='RGB')
+        else:
+            im = scipy.misc.imread(path, mode='F')
+
         im = np.array(im).astype(np.float32)
         #Normalize inputs -- https://github.com/soumith/ganhacks
         im = im/127.5 - 1
@@ -145,14 +153,14 @@ def export_images(db_path, out_dir, flat=False, limit=-1):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--data',type=str,help='Location of data to be converted',required=True)
+    parser.add_argument('--dataset',type=str,help='Dataset to convert',required=True)
     args = parser.parse_args()
     # CelebA
-    convert(args.data, './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
-        exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
+    if args.dataset == 'celeba':
+        convert(CELEBA_IMAGES, './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
+            exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
+    else:#MNIST
+        convert(MNIST_IMAGES, './data/mnist_tfrecords', crop_size=[], out_size=[32, 32],
+            exts=['jpg'], num_shards=128, tfrecords_prefix='mnist',crop=False)
 
-     #LSUN
-     #export_images('./tf.gans-comparison/data/lsun/bedroom_val_lmdb/',
-     #    './tf.gans-comparison/data/lsun/bedroom_val_images/', flat=True)
-    # convert('/home/ibhat/datasets/lsun/lsun/images', './data/lsun/bedroom_64_tfrecords', crop_size=[64, 64],
-    #        out_size=[64, 64], exts=['jpg'], num_shards=128, tfrecords_prefix='lsun_bedroom')
+
