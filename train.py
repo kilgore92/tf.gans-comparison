@@ -20,7 +20,7 @@ def build_parser():
     parser.add_argument('--model', help=models_str, required=True) # DRAGAN, CramerGAN
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
-    parser.add_argument('--image_size',default=64)
+    parser.add_argument('--image_size',type=int,default=64)
     parser.add_argument('--ckpt_step', default=5000, help='# of steps for saving checkpoint (default: 5000)', type=int)
     parser.add_argument('--renew', action='store_true', help='train model from scratch - \
         clean saved checkpoints and summaries', default=False)
@@ -28,9 +28,9 @@ def build_parser():
     return parser
 
 
-def input_pipeline(glob_pattern, batch_size, num_threads, num_epochs,image_size):
+def input_pipeline(glob_pattern, batch_size, num_threads, num_epochs,image_size,dataset=''):
     tfrecords_list = glob.glob(glob_pattern)
-    X = ip.shuffle_batch_join(tfrecords_list, batch_size=batch_size, num_threads=num_threads, num_epochs=num_epochs,image_size=image_size)
+    X = ip.shuffle_batch_join(tfrecords_list, batch_size=batch_size, num_threads=num_threads, num_epochs=num_epochs,image_size=image_size,dataset=dataset)
     return X
 
 
@@ -203,13 +203,15 @@ if __name__ == "__main__":
     config.pprint_args(FLAGS)
 
     # get information for dataset
-    dataset_pattern, n_examples = config.get_dataset(FLAGS.dataset)
+    dataset_pattern, n_examples,n_channels = config.get_dataset(FLAGS.dataset)
+
     # input pipeline
     X = input_pipeline(dataset_pattern, batch_size=FLAGS.batch_size,
-        num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs,image_size = int(FLAGS.image_size))
+        num_threads=FLAGS.num_threads, num_epochs=FLAGS.num_epochs,image_size = FLAGS.image_size,dataset=FLAGS.dataset)
+
     # Arbitrarily sized crops will be resized to 64x64x3. Model will be constructed accordingly
 
-    resized_image_shape = [64,64,3]
+    image_shape = [FLAGS.image_size,FLAGS.image_size,n_channels]
     batch_norm = True
 
     if FLAGS.name == 'dragan' or FLAGS.name == 'dcgan-cons':
@@ -218,6 +220,6 @@ if __name__ == "__main__":
     if FLAGS.simultaneous == True and FLAGS.model == 'DCGAN':
         FLAGS.name = FLAGS.model.lower() + '_sim'
 
-    model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=resized_image_shape,batch_norm=batch_norm)
+    model = config.get_model(FLAGS.model, FLAGS.name, training=True,image_shape=image_shape,batch_norm=batch_norm)
     train(model=model, dataset=FLAGS.dataset,input_op=X, num_epochs=FLAGS.num_epochs, batch_size=FLAGS.batch_size,
         n_examples=n_examples, ckpt_step=FLAGS.ckpt_step, renew=FLAGS.renew,simultaneous = FLAGS.simultaneous)
