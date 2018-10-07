@@ -45,7 +45,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
     print("steps per epoch: {}\n".format(n_examples//batch_size))
     n_critic = 5 # Critic training iterations per generator update for WGAN and WGAN-GP
 
-    if model.name == 'dcgan-cons' or 'dcgan-cons_bn':
+    if model.name == 'dcgan-cons' or model.name == 'dcgan-cons_bn':
         store_grads = False
     else:
         store_grads = True
@@ -73,6 +73,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
             d_grad_norm_gp = []
 
     config = tf.ConfigProto()
+
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer()) # for epochs
