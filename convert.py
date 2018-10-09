@@ -87,6 +87,7 @@ def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=1
             im = scipy.misc.imread(path, mode='F')
 
         im = np.array(im).astype(np.float32)
+
         #Normalize inputs -- https://github.com/soumith/ganhacks
         im = im/127.5 - 1
         # preproc
@@ -94,8 +95,6 @@ def convert(source_dir, target_dir, crop_size, out_size, exts=[''], num_shards=1
             try:
                 im = center_crop(im, crop_size)
             except Exception as e:
-                # print("im_path: {}".format(path))
-                # print("im_shape: {}".format(im.shape))
                 print("[Exception] {}".format(e))
                 continue
 
@@ -160,7 +159,7 @@ if __name__ == "__main__":
         convert(CELEBA_IMAGES, './data/celebA_tfrecords', crop_size=[64, 64], out_size=[64, 64],
             exts=['jpg'], num_shards=128, tfrecords_prefix='celebA',crop=True)
     else:#MNIST
-        convert(MNIST_IMAGES, './data/mnist_tfrecords', crop_size=[], out_size=[32, 32],
+        convert(MNIST_IMAGES, './data/mnist_tfrecords', crop_size=[], out_size=[64, 64],
             exts=['jpg'], num_shards=128, tfrecords_prefix='mnist',crop=False)
 
 

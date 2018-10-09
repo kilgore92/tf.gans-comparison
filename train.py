@@ -21,7 +21,7 @@ def build_parser():
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
     parser.add_argument('--image_size',type=int,default=64)
-    parser.add_argument('--ckpt_step', default=5000, help='# of steps for saving checkpoint (default: 5000)', type=int)
+    parser.add_argument('--ckpt_step', default=500, help='# of steps for saving checkpoint (default: 5000)', type=int)
     parser.add_argument('--renew', action='store_true', help='train model from scratch - \
         clean saved checkpoints and summaries', default=False)
     parser.add_argument('--simultaneous', action='store_true', help='Choose between alternate GD and simultaeneous GD', default=False)
