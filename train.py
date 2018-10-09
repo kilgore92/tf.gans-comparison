@@ -52,20 +52,20 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
 
     summary_path = os.path.join('./summary/', dataset, model.name)
     ckpt_path = os.path.join('./checkpoints', dataset, model.name)
+    sample_dir = os.path.join(os.getcwd(),'samples',dataset.lower(),model.name)
     if renew:
         if os.path.exists(summary_path):
             tf.gfile.DeleteRecursively(summary_path)
         if os.path.exists(ckpt_path):
             tf.gfile.DeleteRecursively(ckpt_path)
+        if os.path.exists(sample_dir):
+            shutil.rmtree(sample_dir)
+
     if not os.path.exists(ckpt_path):
         tf.gfile.MakeDirs(ckpt_path)
 
-    sample_dir = os.path.join(os.getcwd(),'samples',dataset.lower(),model.name)
-    if os.path.exists(sample_dir):
-        shutil.rmtree(sample_dir)
-
-
-    os.makedirs(sample_dir)
+    if not os.path.exists(sample_dir):
+        os.makedirs(sample_dir)
 
     if store_grads is True:
         d_grad_norm = []
