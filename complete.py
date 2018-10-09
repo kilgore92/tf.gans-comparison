@@ -75,14 +75,20 @@ def get_image_paths(image_dir):
     path_list = [os.path.join(image_dir,f) for f in os.listdir(image_dir)]
     return path_list
 
-def read_image(image_path,image_shape):
+def read_image(image_path,image_shape,crop=True,n_channels=3):
 
     im = scipy.misc.imread(image_path)
-    resized_image = center_crop(im,image_shape)
-    resized_image = np.array(resized_image).astype(np.float32)
-    return (resized_image/127.5 - 1)
+    if crop is True:
+        im = center_crop(im,image_shape)
+    im = np.array(im).astype(np.float32)
+    im = scipy.misc.imresize(im,(image_shape[0],image_shape[1]))
+    im = np.reshape(im,(image_shape[0],image_shape[1],n_channels))
+    return (im/127.5 - 1)
 
-def save_image(image,path):
+def save_image(image,path,n_channels=3):
+    if n_channels == 1:
+        image = np.reshape(image,(image.shape[0],image.shape[1]))
+
     scipy.misc.imsave(path,image)
 
 
@@ -99,8 +105,14 @@ def complete(args):
 
     print('Images found : {}'.format(nImgs))
 
-    image_shape = [int(args.image_size),int(args.image_size),3]
+    if args.dataset == 'celeba':
+        crop = True
+        n_channels = 3
+    else:
+        n_channels = 1
+        crop = False
 
+    image_shape = [int(args.image_size),int(args.image_size),n_channels]
 
     batch_idxs = int(np.ceil(nImgs/args.batch_size))
 
@@ -168,12 +180,11 @@ def complete(args):
         # The discriminator graph is used to compute the in-painting loss. Hacked it now, please FIX THIS - TODO
 
         if args.model.lower() == 'dragan' or args.model.lower()=='dcgan-cons': # Pick the non-BN version of DRAGAN and DCGAN-CONS
-            model = config.get_model(args.model.upper(),args.model.lower(), training=True,batch_norm=False)
+            model = config.get_model(args.model.upper(),args.model.lower(), training=True,batch_norm=False,image_shape=image_shape)
         else:
-            model = config.get_model(args.model.upper(),args.model.lower(), training=True)
+            model = config.get_model(args.model.upper(),args.model.lower(), training=True,image_shape=image_shape)
 
         restorer = tf.train.Saver()
-
         checkpoint_dir = os.path.join(os.getcwd(),'checkpoints',args.dataset.lower(),args.model.lower())
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
@@ -188,7 +199,7 @@ def complete(args):
             u = min((idx+1)*args.batch_size, nImgs)
             batchSz = u-l
             batch_files = image_paths[l:u]
-            batch = [read_image(batch_file,[args.image_size,args.image_size]) for batch_file in batch_files]
+            batch = [read_image(batch_file,[args.image_size,args.image_size],n_channels=n_channels,crop=crop) for batch_file in batch_files]
             batch_images = np.array(batch).astype(np.float32)
             masked_images = np.multiply(batch_images, mask)
             if batchSz < args.batch_size:
@@ -214,8 +225,8 @@ def complete(args):
                     os.makedirs(genDir_overlay)
                     gzDir = os.path.join(outDir,'gz')
                     os.makedirs(gzDir)
-                    save_image(image=batch_images[file_idx,:,:,:],path=os.path.join(outDir,'original.jpg'))
-                    save_image(image=masked_images[file_idx,:,:,:],path=os.path.join(outDir,'masked.jpg'))
+                    save_image(image=batch_images[file_idx,:,:,:],path=os.path.join(outDir,'original.jpg'),n_channels=n_channels)
+                    save_image(image=masked_images[file_idx,:,:,:],path=os.path.join(outDir,'masked.jpg'),n_channels=n_channels)
 
 
             for i in range(args.nIter):
@@ -233,9 +244,11 @@ def complete(args):
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                         completed = []
                         overlay = masked_images + inv_masked_hat_images
-                        for img,indx in zip(G_imgs,range(len(G_imgs))):
-                            completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
-                        completed = np.asarray(completed)
+
+                        # Disabling blending for MNIST
+                        #for img,indx in zip(G_imgs,range(len(G_imgs))):
+                        #    completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
+                        #completed = np.asarray(completed)
 
                         # Save all in-painted images of this iteration in their respective image folders
 
@@ -245,9 +258,9 @@ def complete(args):
                             save_path_overlay = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images_overlay','gen_{}.jpg'.format(i))
                             save_path_gz = os.path.join(dumpDir,'{}'.format(folder_idx),'gz','gz_{}.jpg'.format(i))
                             overlay[image_idx,:,:,:] = rescale_image(overlay[image_idx,:,:,:])
-                            save_image(image=completed[image_idx,:,:,:],path=save_path)
-                            save_image(image=overlay[image_idx,:,:,:],path=save_path_overlay)
-                            save_image(image=rescale_image(G_imgs[image_idx,:,:,:]),path=save_path_gz)
+                            #save_image(image=completed[image_idx,:,:,:],path=save_path,n_channels=n_channels)
+                            save_image(image=overlay[image_idx,:,:,:],path=save_path_overlay,n_channels=n_channels)
+                            save_image(image=rescale_image(G_imgs[image_idx,:,:,:]),path=save_path_gz,n_channels=n_channels)
 
 
                 # Adam implementation
