@@ -48,15 +48,12 @@ def blend_images(image,gen_image,mask,rescale=True):
     if rescale is True:
         gen_image = rescale_image(gen_image)
 
-    gen_image = np.array(gen_image,dtype = np.uint8)
-
     if rescale is True:
         image = rescale_image(image)
 
     image = np.array(image,dtype = np.uint8)
-
     mask = np.array(mask,dtype=np.uint8)
-
+    gen_image = np.array(gen_image,dtype = np.uint8)
     center = (image.shape[0]//2,image.shape[1]//2)
 
     blended_image = cv2.seamlessClone(gen_image,image,mask,center,cv2.NORMAL_CLONE)
@@ -243,22 +240,28 @@ def complete(args):
                     if args.mode == 'inpainting':
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                         completed = []
+
+                        #Direct overlay
                         overlay = masked_images + inv_masked_hat_images
 
-                        # Disabling blending for MNIST
-                        #for img,indx in zip(G_imgs,range(len(G_imgs))):
-                        #    completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
-                        #completed = np.asarray(completed)
+                        #Poisson Blending
+                        if n_channels ==  3:# OpenCV Poisson Blending supports only 3-channel image blending. FIXME
+                            for img,indx in zip(G_imgs,range(len(G_imgs))):
+                                completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask),n_channels=n_channels))
+                            completed = np.asarray(completed)
 
                         # Save all in-painted images of this iteration in their respective image folders
-
                         for  image_idx in range(args.batch_size):
                             folder_idx = l + image_idx
-                            save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
+
                             save_path_overlay = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images_overlay','gen_{}.jpg'.format(i))
                             save_path_gz = os.path.join(dumpDir,'{}'.format(folder_idx),'gz','gz_{}.jpg'.format(i))
                             overlay[image_idx,:,:,:] = rescale_image(overlay[image_idx,:,:,:])
-                            #save_image(image=completed[image_idx,:,:,:],path=save_path,n_channels=n_channels)
+
+                            if n_channels == 3:
+                                save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
+                                save_image(image=completed[image_idx,:,:,:],path=save_path,n_channels=n_channels)
+
                             save_image(image=overlay[image_idx,:,:,:],path=save_path_overlay,n_channels=n_channels)
                             save_image(image=rescale_image(G_imgs[image_idx,:,:,:]),path=save_path_gz,n_channels=n_channels)
 
