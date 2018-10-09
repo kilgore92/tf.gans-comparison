@@ -252,7 +252,7 @@ def complete(args):
 
                         # Save all in-painted images of this iteration in their respective image folders
 
-                        for  image_idx in range(len(completed)):
+                        for  image_idx in range(args.batch_size):
                             folder_idx = l + image_idx
                             save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
                             save_path_overlay = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images_overlay','gen_{}.jpg'.format(i))
