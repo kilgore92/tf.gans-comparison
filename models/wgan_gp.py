@@ -147,8 +147,8 @@ class WGAN_GP(BaseModel):
                     filter_num = filter_num//2
                     input_size = input_size*stride
 
-                net = slim.conv2d_transpose(net, 3, activation_fn=tf.nn.tanh, normalizer_fn=None)
-                expected_shape(net, [self.shape[0], self.shape[1], 3])
+                net = slim.conv2d_transpose(net, self.shape[2], activation_fn=tf.nn.tanh, normalizer_fn=None)
+                expected_shape(net, [self.shape[0], self.shape[1], self.shape[2]])
 
                 return net
     '''
