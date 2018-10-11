@@ -58,9 +58,9 @@ def get_batch_join(tfrecords_list, batch_size, shuffle=False, num_threads=1, min
         capacity = min_after_dequeue + 3*batch_size
         if shuffle:
             batch = tf.train.shuffle_batch_join(tensors_list=example_list, batch_size=batch_size, capacity=capacity,
-                                                min_after_dequeue=min_after_dequeue, allow_smaller_final_batch=True)
+                                                min_after_dequeue=min_after_dequeue, allow_smaller_final_batch=False)
         else:
-            batch = tf.train.batch_join(example_list, batch_size, capacity=capacity, allow_smaller_final_batch=True)
+            batch = tf.train.batch_join(example_list, batch_size, capacity=capacity, allow_smaller_final_batch=False)
 
         return batch
 

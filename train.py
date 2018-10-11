@@ -167,14 +167,15 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
             print('\nDone -- epoch limit reached\n')
 
         finally:
-            save_file = os.path.join(ckpt_path,'{}_grads.pkl'.format(model.name))
-            with open(save_file,'wb') as f:
-                pickle.dump(d_grad_norm,f)
-
-            if model.name == 'dcgan':
-                save_file = os.path.join(ckpt_path,'{}_grads_gp.pkl'.format(model.name))
+            if store_grads is True:
+                save_file = os.path.join(ckpt_path,'{}_grads.pkl'.format(model.name))
                 with open(save_file,'wb') as f:
-                    pickle.dump(d_grad_norm_gp,f)
+                    pickle.dump(d_grad_norm,f)
+
+                if model.name == 'dcgan':
+                    save_file = os.path.join(ckpt_path,'{}_grads_gp.pkl'.format(model.name))
+                    with open(save_file,'wb') as f:
+                        pickle.dump(d_grad_norm_gp,f)
 
 
             coord.request_stop()
