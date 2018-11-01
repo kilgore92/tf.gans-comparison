@@ -18,7 +18,8 @@ import pandas as pd
 
 image_size = 64
 
-test_images_root = '/home/TUE/s162156/gans_compare/tf.gans-comparison/imagesdb'
+#FIXME -- hardocode
+test_images_root = '/mnt/server-home/TUE/s162156/gans_compare/tf.gans-comparison/imagesdb_mnist'
 
 def build_parser():
     parser = ArgumentParser()
@@ -51,7 +52,7 @@ def find_closest_training_image(emb_inpainting,train_emb_dict):
 
     return min_training_image_path,min_cosine,min_training_image_emb
 
-def merge_and_save(image_list,idx,root_dir):
+def merge_and_save(image_list,idx,root_dir,dataset='mnist'):
 
     """
     Create an image mosiac.
@@ -62,42 +63,57 @@ def merge_and_save(image_list,idx,root_dir):
     filename = os.path.join(root_dir,'3z_{}.jpg'.format(idx))
     frame_width = int(64*len(image_list))
     frame_height = 64
-    frame_channels = 3
-    img = np.zeros((frame_height,frame_width,frame_channels))
+    if dataset == 'celeba':
+        frame_channels = 3
+    else:
+        frame_channels = 1
 
-    for image,index in zip(image_list,range(len(image_list))):
-        x_pos = index*64
-        img[0:int(frame_height),x_pos:x_pos+64,:] = image
+    if frame_channels == 3:
+        img = np.zeros((frame_height,frame_width,frame_channels))
+
+        for image,index in zip(image_list,range(len(image_list))):
+            x_pos = index*64
+            img[0:int(frame_height),x_pos:x_pos+64,:] = image
+    else:
+        img = np.zeros((frame_height,frame_width))
+
+        for image,index in zip(image_list,range(len(image_list))):
+            x_pos = index*64
+            img[0:int(frame_height),x_pos:x_pos+64] = image
+
 
     scipy.misc.imsave(filename,img)
 
 
 
-def read_and_crop_image(fname):
+def read_and_crop_image(fname,dataset='celeba'):
     """
     Read and crop image to 64x64 for display
 
     """
-    return center_crop(im = scipy.misc.imread(fname,mode='RGB'),output_size=[64,64])
+    if dataset =='celeba':
+        return center_crop(im = scipy.misc.imread(fname,mode='RGB'),output_size=[64,64])
+    else:
+        return scipy.misc.imresize(arr=scipy.misc.imread(fname),size = (64,64),interp='bilinear')
 
 def get_inpainting_path(idx,mname):
     imgName = '{}.jpg'.format(mname.lower())
     imgPath = os.path.join(test_images_root,str(idx),'gen','{}.jpg'.format(mname.lower()))
     return imgPath
 
-def read_dict(root_dir,model):
+def read_dict(root_dir,model,dataset='celeba'):
     """
     Reads all three embedding dictionaries
 
     """
-    with open(os.path.join(root_dir,'train_emb_dict.pkl'),'rb') as f:
+    with open(os.path.join(root_dir,'train_{}_emb_dict.pkl'.format(dataset.lower())),'rb') as f:
         train_emb_dict = pickle.load(f)
 
-    with open(os.path.join(root_dir,'test_emb_dict.pkl'),'rb') as f:
+    with open(os.path.join(root_dir,'test_{}_emb_dict.pkl'.format(dataset.lower())),'rb') as f:
         test_emb_dict = pickle.load(f)
 
     if model is not None:
-        fname = os.path.join(root_dir,'{}_emb_dict.pkl'.format(model.lower()))
+        fname = os.path.join(root_dir,'{}_{}_emb_dict.pkl'.format(model.lower(),dataset.lower()))
         with open(fname,'rb') as f:
             inpaint_emb_dict = pickle.load(f)
     else:
@@ -127,10 +143,10 @@ def analyze_vectors(args):
 
     """
 
-    train_emb_dict,test_emb_dict,inpaint_emb_dict = read_dict(args.emb,args.model)
+    train_emb_dict,test_emb_dict,inpaint_emb_dict = read_dict(args.emb,args.model,args.dataset)
 
 
-    outDir = os.path.join(os.getcwd(),'{}_embedding'.format(args.model.upper()))
+    outDir = os.path.join(os.getcwd(),'{}_{}_embedding'.format(args.model.upper(),args.dataset.upper()))
 
     if os.path.exists(outDir) is True:
         shutil.rmtree(outDir)
@@ -150,7 +166,7 @@ def analyze_vectors(args):
     closest_train_image_dict = {}
 
     # Path for inpainted images (with blending bug fixed)
-    inpaint_path_root = os.path.join(os.getcwd(),'completions_stochastic_center','{}'.format(args.model.lower()),'celeba')
+    inpaint_path_root = os.path.join(os.getcwd(),'completions_stochastic_center','{}'.format(args.model.lower()),args.dataset.lower())
 
     # Iterate over the dict
     for gz_path,emb_inpainting in inpaint_emb_dict.items():
@@ -181,22 +197,25 @@ def analyze_vectors(args):
 
         sys.stdout.flush()
 
-        testImg = read_and_crop_image(source_img)
-        maskImg = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'masked.jpg'))
+        testImg = read_and_crop_image(source_img,args.dataset)
+        maskImg = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'masked.jpg'),args.dataset)
 
         # Inpaintings -- Buggy - Blended - Overlay
-        inpImg_blend = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images','gen_1400.jpg'))
-        inpImg_overlay = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images_overlay','gen_1400.jpg'))
+        if args.dataset == 'celeba':
+            inpImg_blend = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images','gen_1400.jpg'))
+
+        inpImg_overlay = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gen_images_overlay','gen_1400.jpg'),args.dataset)
 
         # G(z)
-        Gz = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gz','gz_1400.jpg'))
+        Gz = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'gz','gz_1400.jpg'),args.dataset)
 
         image_list.append(testImg) # Test Image -- Complete
         image_list.append(maskImg) # Masked
-        image_list.append(inpImg_blend) # Inpainting -- blend
+        if args.dataset == 'celeba':
+            image_list.append(inpImg_blend) # Inpainting -- blend
         image_list.append(inpImg_overlay) # Inpainting -- overlay
         image_list.append(Gz) # G(z_inpainting)
-        image_list.append(read_and_crop_image(t_image_min_path)) # Closest training image w.r.t emb_inpainting
+        image_list.append(read_and_crop_image(t_image_min_path,args.dataset)) # Closest training image w.r.t emb_inpainting
 
         if test_inp_cosine <= train_inp_min_cosine: # Inpainting latent vector closer to test latent vector
             generalize.append(row)
