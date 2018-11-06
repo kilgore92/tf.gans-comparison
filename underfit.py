@@ -45,6 +45,10 @@ def find_closest_training_image(emb_inpainting,train_emb_dict):
     min_training_image_path = ''
     for t_image_path,emb_training in train_emb_dict.items():
         cosine_distance = cosine(emb_inpainting,emb_training)
+
+        if cosine_distance < 0: #Numerical error sometimes results in the cosine being slightly larger than 1, leading to negative "distance"
+            cosine_distance = 0
+
         if cosine_distance < min_cosine:
             min_cosine = cosine_distance
             min_training_image_path = t_image_path

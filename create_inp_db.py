@@ -39,8 +39,6 @@ def create_database(args):
     models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan','dragan_bn','dcgan_sim']
     source_dirs = []
     for model in models:
-        if args.dataset == 'mnist' and model == 'dcgan_sim':
-            continue
         dir_path = os.path.join(os.getcwd(),str(args.rootDir),str(model),str(args.dataset))
         source_dirs.append(dir_path)
 
