@@ -15,55 +15,10 @@ def build_parser():
 
     """
     parser = ArgumentParser()
-    parser.add_argument('--outDir',type=str,default = 'imagesdb')
-    parser.add_argument('--rootDir',type=str,default='completions_stochastic_center')
     parser.add_argument('--dataset',type=str,default = 'celeba')
     parser.add_argument('--nImages',type=int,default=1000)
-    parser.add_argument('--db',action='store_true',help='Create database from in-paintings or split the dataset into train/test',default=False)
-    parser.add_argument('--data',type=str,default='/mnt/server-home/TUE/s162156/datasets/celebA')
     args = parser.parse_args()
     return args
-
-def create_database(args):
-    """
-    Merge in-paintings from different models into a hierarchical folder
-    structure
-
-    """
-
-
-    if (os.path.exists(args.outDir)):
-        # Remove it
-        shutil.rmtree(args.outDir)
-
-    os.makedirs(args.outDir)
-
-    models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan','dragan_bn','dcgan_sim']
-    source_dirs = []
-    for model in models:
-        dir_path = os.path.join(os.getcwd(),str(args.rootDir),str(model),str(args.dataset))
-        source_dirs.append(dir_path)
-
-
-    for idx in range(args.nImages):
-        curr_out_dir = os.path.join(args.outDir,'{}'.format(idx))
-        os.makedirs(curr_out_dir)
-        original_image = os.path.join(source_dirs[0],'{}'.format(idx),'original.jpg') # Copy the image from one of the source directories
-        # Copy over the original image
-        shutil.copy2(original_image,curr_out_dir)
-        # Copy over the masked image
-        masked_image = os.path.join(source_dirs[0],'{}'.format(idx),'masked.jpg') # Copy the image from one of the source directories
-        shutil.copy2(masked_image,curr_out_dir)
-
-        # Make the sub-folder
-        genDir = os.path.join(curr_out_dir,'gen')
-        os.makedirs(genDir)
-
-        for source_dir in source_dirs:
-            curr_image_file = os.path.join(source_dir,'{}'.format(idx),'gen_images','gen_1400.jpg')
-            model_name = source_dir.split('/')[-2]
-            dst = os.path.join(curr_out_dir,'gen','{}.jpg'.format(model_name))
-            shutil.copy2(curr_image_file,dst)
 
 
 def sample_test_files(dir_path,n_samples=1000):
@@ -84,9 +39,9 @@ def split_train_test(args):
     Split train and test set
 
     """
-    train_file_path = os.path.join(args.data,'celebA')
+    train_file_path = os.path.join(os.path.expanduser('~'),'datasets','{}'.format(args.dataset),'{}_train'.format(args.dataset))
 
-    target_dir = os.path.join(args.data,'celebA_test')
+    target_dir = os.path.join(os.path.expanduser('~'),'datasets','{}'.format(args.dataset),'{}_test'.format(args.dataset))
 
     if os.path.exists(target_dir):
 
@@ -114,11 +69,7 @@ def split_train_test(args):
 if __name__ == '__main__':
 
     args = build_parser()
-
-    if args.db is True:
-        create_database(args)
-    else:
-        split_train_test(args)
+    split_train_test(args)
 
 
 

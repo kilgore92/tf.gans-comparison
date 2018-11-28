@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 import shutil
 
 
-MNIST_IMAGES = '/home/TUE/s162156/datasets/mnist'
+MNIST_IMAGES = '/home/TUE/s162156/datasets/mnist/mnist_train'
 CELEBA_IMAGES = '/home/TUE/s162156/datasets/celebA/celebA'
 
 def _bytes_features(value):
