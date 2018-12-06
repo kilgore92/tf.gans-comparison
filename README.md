@@ -1,7 +1,7 @@
 # Evaluating the Effect of Regularization Strategies on Inpainting performance of GANs
 
 ### Preliminaries:
-This repository was forked from [here](https://github.com/khanrc/tf.gans-comparison), I advise you to go through it's excellent [README](https://github.com/khanrc/tf.gans-comparison/blob/master/README.md) for details about individual GAN models and how to train them. This code was used to run experiments for my [master thesis](https://www.dropbox.com/s/7jpie3kj5ejp501/Thesis_IshaanBhat_Final.pdf?dl=0) at TU Eindhoven. In this experiment, all GANs are trained on the CelebA dataset.
+iThis repository was forked from [here](https://github.com/khanrc/tf.gans-comparison), I advise you to go through it's excellent [README](https://github.com/khanrc/tf.gans-comparison/blob/master/README.md) for details about individual GAN models and how to train them. This code was used to run experiments for my [master thesis](https://www.dropbox.com/s/7jpie3kj5ejp501/Thesis_IshaanBhat_Final.pdf?dl=0) at TU Eindhoven. In this experiment, all GANs are trained on the CelebA dataset.
 
 The following packages can be installed using pip/conda. I used the Anaconda package manager and used the following YAML file to install dependencies:
 ```
@@ -92,11 +92,11 @@ This concludes the tutorial on running this experiment and generating results. T
 
 ##### Image Similarity between Original and Generated Inpaintings
 
-![Image Similarity Results across GAN models](sim_distances.png)
+![Image Similarity Results across GAN models](figures/sim_distances.png)
 
 ##### GAN model performance on the Generalization Gap metric
 
-![Generalization Gap metric](joint_bar.png)
+![Generalization Gap metric](figures/joint_bar.png)
 
 In case of any issues/fixes needed I can be found at ishaan[dot]bits92[at]gmail[dot]com. 
 
