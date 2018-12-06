@@ -3,7 +3,7 @@
 import tensorflow as tf
 import numpy as np
 import glob, os, sys
-sys.path.append(os.getcwd())
+sys.path.append(os.path.join(os.getcwd(),'src'))
 import inputpipe as ip
 from argparse import ArgumentParser
 import utils, config
