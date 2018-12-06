@@ -1,0 +1,4 @@
+#!/bin/bash
+source activate gans
+python src/complete.py --model $1 --dataset mnist --images /mnt/server-home/TUE/s162156/datasets/mnist/mnist_test 
+source deactivate gans

@@ -1,0 +1,4 @@
+#!/bin/bash
+source activate gans
+python underfit.py --model $1 --dataset celeba --emb /home/TUE/s162156/facenet/facenet/embeddings 
+source deactivate gans
