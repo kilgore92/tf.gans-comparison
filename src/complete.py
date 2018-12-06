@@ -239,7 +239,7 @@ def complete(args):
                     #Poisson Blending
                     if n_channels ==  3:# OpenCV Poisson Blending supports only 3-channel image blending. FIXME
                         for img,indx in zip(G_imgs,range(len(G_imgs))):
-                            completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask),n_channels=n_channels))
+                            completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask)))
                         completed = np.asarray(completed)
 
                     # Save all in-painted images of this iteration in their respective image folders
