@@ -16,9 +16,10 @@ def build_parser():
     """
     parser = ArgumentParser()
     parser.add_argument('--outDir',type=str,default = 'imagesdb')
-    parser.add_argument('--rootDir',type=str,default='completions_stochastic_center')
-    parser.add_argument('--dataset',type=str,default = 'celeba')
+    parser.add_argument('--rootDir',type=str,default='completions')
+    parser.add_argument('--dataset',type=str,required=True)
     parser.add_argument('--nImages',type=int,default=1000)
+    parser.add_argument('--mask',type=str,default='center')
     args = parser.parse_args()
     return args
 
@@ -28,7 +29,7 @@ def create_database(args):
     structure
 
     """
-    outDir = args.outDir + '_{}'.format(args.dataset)
+    outDir = os.path.join(args.outDir,args.dataset.lower())
 
     if (os.path.exists(outDir)):
         # Remove it
@@ -39,7 +40,7 @@ def create_database(args):
     models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan','dragan_bn','dcgan_sim']
     source_dirs = []
     for model in models:
-        dir_path = os.path.join(os.getcwd(),str(args.rootDir),str(model),str(args.dataset))
+        dir_path = os.path.join(os.getcwd(),str(args.rootDir),str(args.dataset.lower()),model,str(args.mask))
         source_dirs.append(dir_path)
 
     if args.dataset == 'celeba':
