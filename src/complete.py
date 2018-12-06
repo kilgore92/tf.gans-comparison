@@ -3,7 +3,7 @@
 import tensorflow as tf
 import numpy as np
 import glob, os, sys
-sys.path.append(os.getcwd())
+sys.path.append(os.path.join(os.getcwd(),'src'))
 from argparse import ArgumentParser
 import utils, config
 import shutil
@@ -31,9 +31,6 @@ def build_parser():
     parser.add_argument('--eps', type=float, default=1e-8)
     parser.add_argument('--lr', type=float, default=0.005)
     parser.add_argument('--clipping',type=str,help='Options: standard or stochastic',default='stochastic')
-    parser.add_argument('--mode',type=str,help='Completion mode : inpainting or latent',default='inpainting')
-    parser.add_argument('--source',type=str,help='Option for image for maps. train/test/inpaint',default='inpaint')
-
     return parser
 
 
@@ -115,23 +112,13 @@ def complete(args):
 
     maskType = args.maskType
 
-    #Save the map dict
-    map_file = 'latent_space_'+args.source+'_'+args.model.upper()+'.pkl'
-
-    # If latent mappings need to be found, overwrite the default map type to 'full'
-    if args.mode == 'latent':
-        maskType = 'full'
+    folder_name = os.path.join('completions',args.dataset.lower(),args.model.lower())
+    dumpDir = os.path.join(folder_name,maskType)
 
 
-    if args.mode == 'inpainting':
-
-        folder_name = 'completions'+'_'+str(args.clipping) + '_'+ str(maskType)
-
-        dumpDir = os.path.join(os.getcwd(),folder_name,args.model.lower(),args.dataset.lower())
-
-        if os.path.exists(dumpDir):
-            shutil.rmtree(dumpDir)
-        os.makedirs(dumpDir)
+    if os.path.exists(dumpDir):
+        shutil.rmtree(dumpDir)
+    os.makedirs(dumpDir)
 
 
     if maskType == 'random':
@@ -211,19 +198,24 @@ def complete(args):
             m = 0
             v = 0
 
-            if args.mode == 'inpainting':
-                for file_idx in range(len(batch_images)):
-                    folder_idx = l + file_idx
-                    outDir = os.path.join(dumpDir,'{}'.format(folder_idx))
-                    os.makedirs(outDir) # Directory that stores real and masked images, different for each real image
+            for file_idx in range(len(batch_images)):
+                folder_idx = l + file_idx
+
+                outDir = os.path.join(dumpDir,'{}'.format(folder_idx))
+                os.makedirs(outDir) # Directory that stores real and masked images, different for each real image
+
+                if n_channels == 3:
                     genDir = os.path.join(outDir,'gen_images') # Directory that stores iterations of in-paintings
-                    genDir_overlay = os.path.join(outDir,'gen_images_overlay') # Directory that stores iterations of in-paintings
                     os.makedirs(genDir)
-                    os.makedirs(genDir_overlay)
-                    gzDir = os.path.join(outDir,'gz')
-                    os.makedirs(gzDir)
-                    save_image(image=batch_images[file_idx,:,:,:],path=os.path.join(outDir,'original.jpg'),n_channels=n_channels)
-                    save_image(image=masked_images[file_idx,:,:,:],path=os.path.join(outDir,'masked.jpg'),n_channels=n_channels)
+
+                genDir_overlay = os.path.join(outDir,'gen_images_overlay') # Directory that stores iterations of in-paintings
+                os.makedirs(genDir_overlay)
+
+                gzDir = os.path.join(outDir,'gz')
+                os.makedirs(gzDir)
+
+                save_image(image=batch_images[file_idx,:,:,:],path=os.path.join(outDir,'original.jpg'),n_channels=n_channels)
+                save_image(image=masked_images[file_idx,:,:,:],path=os.path.join(outDir,'masked.jpg'),n_channels=n_channels)
 
 
             for i in range(args.nIter):
@@ -237,33 +229,33 @@ def complete(args):
 
                 if i%100 == 0:
                     print('Timestamp: {:%Y-%m-%d %H:%M:%S} Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(datetime.now(),idx,batch_idxs,i, np.mean(loss[0:batchSz])))
-                    if args.mode == 'inpainting':
-                        inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
-                        completed = []
 
-                        #Direct overlay
-                        overlay = masked_images + inv_masked_hat_images
+                    inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
+                    completed = []
 
-                        #Poisson Blending
-                        if n_channels ==  3:# OpenCV Poisson Blending supports only 3-channel image blending. FIXME
-                            for img,indx in zip(G_imgs,range(len(G_imgs))):
-                                completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask),n_channels=n_channels))
-                            completed = np.asarray(completed)
+                    #Direct overlay
+                    overlay = masked_images + inv_masked_hat_images
 
-                        # Save all in-painted images of this iteration in their respective image folders
-                        for  image_idx in range(args.batch_size):
-                            folder_idx = l + image_idx
+                    #Poisson Blending
+                    if n_channels ==  3:# OpenCV Poisson Blending supports only 3-channel image blending. FIXME
+                        for img,indx in zip(G_imgs,range(len(G_imgs))):
+                            completed.append(blend_images(image = overlay[indx,:,:,:], gen_image = img,mask = np.multiply(255,1.0-mask),n_channels=n_channels))
+                        completed = np.asarray(completed)
 
-                            save_path_overlay = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images_overlay','gen_{}.jpg'.format(i))
-                            save_path_gz = os.path.join(dumpDir,'{}'.format(folder_idx),'gz','gz_{}.jpg'.format(i))
-                            overlay[image_idx,:,:,:] = rescale_image(overlay[image_idx,:,:,:])
+                    # Save all in-painted images of this iteration in their respective image folders
+                    for  image_idx in range(args.batch_size):
+                        folder_idx = l + image_idx
 
-                            if n_channels == 3:
-                                save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
-                                save_image(image=completed[image_idx,:,:,:],path=save_path,n_channels=n_channels)
+                        save_path_overlay = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images_overlay','gen_{}.jpg'.format(i))
+                        save_path_gz = os.path.join(dumpDir,'{}'.format(folder_idx),'gz','gz_{}.jpg'.format(i))
+                        overlay[image_idx,:,:,:] = rescale_image(overlay[image_idx,:,:,:])
 
-                            save_image(image=overlay[image_idx,:,:,:],path=save_path_overlay,n_channels=n_channels)
-                            save_image(image=rescale_image(G_imgs[image_idx,:,:,:]),path=save_path_gz,n_channels=n_channels)
+                        if n_channels == 3:
+                            save_path = os.path.join(dumpDir,'{}'.format(folder_idx),'gen_images','gen_{}.jpg'.format(i))
+                            save_image(image=completed[image_idx,:,:,:],path=save_path,n_channels=n_channels)
+
+                        save_image(image=overlay[image_idx,:,:,:],path=save_path_overlay,n_channels=n_channels)
+                        save_image(image=rescale_image(G_imgs[image_idx,:,:,:]),path=save_path_gz,n_channels=n_channels)
 
 
                 # Adam implementation
