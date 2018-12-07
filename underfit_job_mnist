@@ -1,4 +1,4 @@
 #!/bin/bash
 source activate gans
-python underfit.py --model $1 --dataset mnist --emb /home/TUE/s162156/facenet/facenet/embeddings 
+python src/underfit.py --model $1 --dataset mnist --emb /home/TUE/s162156/facenet/facenet/embeddings 
 source deactivate gans

@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.spatial.distance import cosine
 import glob, os, sys
-sys.path.append(os.getcwd())
+sys.path.append(os.path.join(os.getcwd(),'src'))
 from argparse import ArgumentParser
 import utils, config
 import shutil
@@ -18,14 +18,13 @@ import pandas as pd
 
 image_size = 64
 
-#FIXME -- hardocode
-test_images_root = '/mnt/server-home/TUE/s162156/gans_compare/tf.gans-comparison/imagesdb_mnist'
 
 def build_parser():
     parser = ArgumentParser()
     parser.add_argument('--model', type=str,help='Provide model for which analysis should be performed. eg: DCGAN/WGAN/...', required=True)
     parser.add_argument('--dataset',type=str,help='Dataset to analyze',default='celeba')
     parser.add_argument('--emb',type=str,help='Root dir where the embedding dictionaries are saved',default='/home/ibhat/facenet/facenet/embeddings')
+    parser.add_argument('--mask',type=str,help='Inpainting mask',default='center')
     return parser
 
 
@@ -100,16 +99,12 @@ def read_and_crop_image(fname,dataset='celeba'):
     else:
         return scipy.misc.imresize(arr=scipy.misc.imread(fname),size = (64,64),interp='bilinear')
 
-def get_inpainting_path(idx,mname):
-    imgName = '{}.jpg'.format(mname.lower())
-    imgPath = os.path.join(test_images_root,str(idx),'gen','{}.jpg'.format(mname.lower()))
-    return imgPath
-
 def read_dict(root_dir,model,dataset='celeba'):
     """
     Reads all three embedding dictionaries
 
     """
+    root_dir = os.path.join(root_dir,dataset)
     with open(os.path.join(root_dir,'train_{}_emb_dict.pkl'.format(dataset.lower())),'rb') as f:
         train_emb_dict = pickle.load(f)
 
@@ -117,7 +112,7 @@ def read_dict(root_dir,model,dataset='celeba'):
         test_emb_dict = pickle.load(f)
 
     if model is not None:
-        fname = os.path.join(root_dir,'{}_{}_emb_dict.pkl'.format(model.lower(),dataset.lower()))
+        fname = os.path.join(root_dir,'{}_emb_dict.pkl'.format(model.lower()))
         with open(fname,'rb') as f:
             inpaint_emb_dict = pickle.load(f)
     else:
@@ -133,8 +128,10 @@ def get_source_image(gz_path):
 
     """
 
+    print(gz_path)
     idx = gz_path.split('/')[-3]
-    source_img = os.path.join(test_images_root,str(idx),'original.jpg')
+    dataset = gz_path.split('/')[-6]
+    source_img = os.path.join(os.getcwd(),'imagesdb',str(dataset),str(idx),'original.jpg')
     return source_img
 
 
@@ -150,7 +147,7 @@ def analyze_vectors(args):
     train_emb_dict,test_emb_dict,inpaint_emb_dict = read_dict(args.emb,args.model,args.dataset)
 
 
-    outDir = os.path.join(os.getcwd(),'{}_{}_embedding'.format(args.model.upper(),args.dataset.upper()))
+    outDir = os.path.join(os.getcwd(),'embeddings',args.dataset.lower(),args.model.lower())
 
     if os.path.exists(outDir) is True:
         shutil.rmtree(outDir)
@@ -170,7 +167,7 @@ def analyze_vectors(args):
     closest_train_image_dict = {}
 
     # Path for inpainted images (with blending bug fixed)
-    inpaint_path_root = os.path.join(os.getcwd(),'completions_stochastic_center','{}'.format(args.model.lower()),args.dataset.lower())
+    inpaint_path_root = os.path.join(os.getcwd(),'completions',args.dataset.lower(),args.model.lower(),args.mask)
 
     # Iterate over the dict
     for gz_path,emb_inpainting in inpaint_emb_dict.items():
