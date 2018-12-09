@@ -120,19 +120,18 @@ def read_dict(root_dir,model,dataset='celeba'):
 
     return train_emb_dict,test_emb_dict,inpaint_emb_dict
 
-def get_source_image(gz_path):
+def get_test_image_key(gz_path):
 
     """
-    Given path to G(z_inpainting), return the path to the
-    source image (on which inpainting was performed)
+    Given path to G(z_inpainting), return the dict key
+    to fetch the embeddings for the corr. test image
 
     """
 
-    print(gz_path)
     idx = gz_path.split('/')[-3]
     dataset = gz_path.split('/')[-6]
-    source_img = os.path.join(os.getcwd(),'imagesdb',str(dataset),str(idx),'original.jpg')
-    return source_img
+    test_img_key = os.path.join('imagesdb',str(dataset),str(idx),'original.jpg')
+    return test_img_key
 
 
 
@@ -174,12 +173,11 @@ def analyze_vectors(args):
         row = []
         image_list = []
 
-        #image_idx = gz_path.split('/')[-1].split('.')[0] # Get imageID from Gz file name
         image_idx = gz_path.split('/')[-3]
         # From the inpaint file, fetch corr. source image
-        source_img = get_source_image(gz_path)
+        test_img_key = get_test_image_key(gz_path)
         # Using the source image path, perform a look up for the embedding
-        emb_test = test_emb_dict[source_img]
+        emb_test = test_emb_dict[test_img_key]
         # Cosine between source image and G(z_inpainting)
         test_inp_cosine = cosine(emb_inpainting,emb_test)
         # Find the closest training image in the embedding space
@@ -188,17 +186,17 @@ def analyze_vectors(args):
         # Maintain "closest" training images dictionary
         closest_train_image_dict[t_image_min_path] = train_inp_min_emb
 
-        row.append(source_img)
-        row.append(gz_path)
+        row.append(os.path.join(os.getcwd(),test_img_key))
+        row.append(os.path.join(os.getcwd(),gz_path))
         row.append(t_image_min_path)
         row.append(test_inp_cosine)
         row.append(train_inp_min_cosine)
 
-        print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(source_img,train_inp_min_cosine,test_inp_cosine))
+        print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(test_img_key,train_inp_min_cosine,test_inp_cosine))
 
         sys.stdout.flush()
 
-        testImg = read_and_crop_image(source_img,args.dataset)
+        testImg = read_and_crop_image(os.path.join(os.getcwd(),test_img_key),args.dataset)
         maskImg = read_and_crop_image(os.path.join(inpaint_path_root,str(image_idx),'masked.jpg'),args.dataset)
 
         # Inpaintings -- Buggy - Blended - Overlay
