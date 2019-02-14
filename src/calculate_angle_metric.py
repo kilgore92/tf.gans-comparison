@@ -180,7 +180,8 @@ def analyze_vectors(args):
     generalize = []
     image_idx = 0
 
-    closest_train_image_dict = {}
+    closest_train_inp_image_dict = {}
+    closest_train_test_image_dict = {}
 
     # Path for inpainted images (with blending bug fixed)
     inpaint_path_root = os.path.join(os.getcwd(),'completions',args.dataset.lower(),args.model.lower(),args.mask)
@@ -197,19 +198,24 @@ def analyze_vectors(args):
         emb_test = test_emb_dict[test_img_key]
         # Cosine between source image and G(z_inpainting)
         test_inp_angle = central_angle_metric(emb_inpainting,emb_test)
-        # Find the closest training image in the embedding space
-        t_image_min_path, train_inp_min_angle,train_inp_min_emb = find_closest_training_image(emb_inpainting,train_emb_dict)
+        # Find the closest training image in the embedding space w.r.t G(z)
+        t_image_min_path_inp, train_inp_min_angle,train_inp_min_emb = find_closest_training_image(emb_inpainting,train_emb_dict)
+        # Find the closest trainig image in the embedding space w.r.t test image
+        t_image_min_path_test,train_test_min_angle,train_test_min_emb = find_closest_training_image(emb_test,train_emb_dict)
 
         # Maintain "closest" training images dictionary
-        closest_train_image_dict[t_image_min_path] = train_inp_min_emb
+        closest_train_inp_image_dict[t_image_min_path_inp] = train_inp_min_emb
+        closest_train_test_image_dict[t_image_min_path_test] = train_test_min_emb
 
         row.append(os.path.join(os.getcwd(),test_img_key))
         row.append(os.path.join(os.getcwd(),gz_path))
-        row.append(t_image_min_path)
+        row.append(t_image_min_path_inp)
+        row.append(t_image_min_path_test)
         row.append(test_inp_angle)
         row.append(train_inp_min_angle)
+        row.append(train_test_min_angle)
 
-        print('Analysis done for image : {} train_angle : {} test_angle : {}'.format(test_img_key,train_inp_min_angle,test_inp_angle))
+        print('Analysis done for image : {} train_inp_angle : {} train_test_angle : {} test_inp_angle : {}'.format(test_img_key,train_inp_min_angle,train_test_min_angle,test_inp_angle))
 
         sys.stdout.flush()
 
@@ -231,7 +237,8 @@ def analyze_vectors(args):
             image_list.append(inpImg_blend) # Inpainting -- blend
         image_list.append(inpImg_overlay) # Inpainting -- overlay
         image_list.append(Gz) # G(z_inpainting)
-        image_list.append(read_and_crop_image(t_image_min_path,args.dataset)) # Closest training image w.r.t emb_inpainting
+        image_list.append(read_and_crop_image(t_image_min_path_inp,args.dataset)) # Closest training image w.r.t emb_inpainting
+        image_list.append(read_and_crop_image(t_image_min_path_test,args.dataset)) # Closest training image w.r.t emb_test
 
         if test_inp_angle <= train_inp_min_angle: # Inpainting latent vector closer to test latent vector
             generalize.append(row)
@@ -244,16 +251,19 @@ def analyze_vectors(args):
     print('Recalled inpaintings : {}'.format(len(recall)))
 
     if len(generalize) > 0:
-        df_gen = pd.DataFrame(data=np.asarray(generalize),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
+        df_gen = pd.DataFrame(data=np.asarray(generalize),columns=['Source Image Path','Gz Path','Closest Train Image Inpainting','Closest Train Image Test','Test-Gz Cosine','Train-Gz Cosine','Train-Test Cosine'])
         df_gen.to_csv(os.path.join(outDir,'emb_results_gen.csv'))
 
     if len(recall) > 0:
-        df_recall = pd.DataFrame(data=np.asarray(recall),columns=['Source Image Path','Gz Path','Closest Train Image','Test-Gz Cosine','Train-Gz Cosine'])
+        df_recall = pd.DataFrame(data=np.asarray(recall),columns= ['Source Image Path','Gz Path','Closest Train Image Inpainting','Closest Train Image Test','Test-Gz Cosine','Train-Gz Cosine','Train-Test Cosine'])
         df_recall.to_csv(os.path.join(outDir,'emb_results_recall.csv'))
 
     # Save the dict
-    with open(os.path.join(outDir,'closest_train_emb.pkl'),'wb') as f:
-        pickle.dump(closest_train_image_dict,f)
+    with open(os.path.join(outDir,'closest_train_inp_emb.pkl'),'wb') as f:
+        pickle.dump(closest_train_inp_image_dict,f)
+    with open(os.path.join(outDir,'closest_train_test_emb.pkl'),'wb') as f:
+        pickle.dump(closest_train_test_image_dict,f)
+
 
 
 
