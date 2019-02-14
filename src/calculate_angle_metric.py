@@ -14,6 +14,7 @@ import config
 from complete import rescale_image
 from complete import blend_images
 import pandas as pd
+from math import degrees
 
 
 image_size = 64
@@ -23,7 +24,7 @@ def build_parser():
     parser = ArgumentParser()
     parser.add_argument('--model', type=str,help='Provide model for which analysis should be performed. eg: DCGAN/WGAN/...', required=True)
     parser.add_argument('--dataset',type=str,help='Dataset to analyze',default='celeba')
-    parser.add_argument('--emb',type=str,help='Root dir where the embedding dictionaries are saved',default='/home/ibhat/facenet/facenet/embeddings')
+    parser.add_argument('--emb',type=str,help='Root dir where the embedding dictionaries are saved',default='/home/TUE/s162156/facenet/facenet/embeddings')
     parser.add_argument('--mask',type=str,help='Inpainting mask',default='center')
     return parser
 
@@ -40,20 +41,36 @@ def find_closest_training_image(emb_inpainting,train_emb_dict):
 
 
     """
-    min_cosine = 2.0
+    min_central_angle = 180.0
     min_training_image_path = ''
     for t_image_path,emb_training in train_emb_dict.items():
-        cosine_distance = cosine(emb_inpainting,emb_training)
+        central_angle = central_angle_metric(emb_inpainting,emb_training)
 
-        if cosine_distance < 0: #Numerical error sometimes results in the cosine being slightly larger than 1, leading to negative "distance"
+        if central_angle < 0: #Numerical error sometimes results in the cosine being slightly larger than 1, leading to negative "distance"
             cosine_distance = 0
 
-        if cosine_distance < min_cosine:
-            min_cosine = cosine_distance
+        if central_angle < min_central_angle:
+            min_central_angle = central_angle
             min_training_image_path = t_image_path
             min_training_image_emb = emb_training
 
-    return min_training_image_path,min_cosine,min_training_image_emb
+    return min_training_image_path,min_central_angle,min_training_image_emb
+
+def central_angle_metric(u,v,r=1.0):
+    """
+    For 2 vectors u,v lying on a (hyper-)sphere of radius r,
+    this function returns the smallest central angle [0,180] (in degrees) between them
+
+    This function has been copied over from ~/facenet/facenet/src/gans_compare.py -- FIXME
+
+    """
+    dot_product = np.dot(u,v)
+    central_angle = np.arccos(np.divide(dot_product,r*r))
+    if central_angle <= np.pi:
+        return degrees(central_angle)
+    else:
+        return degrees(2*np.pi - central_angle)
+
 
 def merge_and_save(image_list,idx,root_dir,dataset='mnist'):
 
@@ -179,9 +196,9 @@ def analyze_vectors(args):
         # Using the source image path, perform a look up for the embedding
         emb_test = test_emb_dict[test_img_key]
         # Cosine between source image and G(z_inpainting)
-        test_inp_cosine = cosine(emb_inpainting,emb_test)
+        test_inp_angle = central_angle_metric(emb_inpainting,emb_test)
         # Find the closest training image in the embedding space
-        t_image_min_path, train_inp_min_cosine,train_inp_min_emb = find_closest_training_image(emb_inpainting,train_emb_dict)
+        t_image_min_path, train_inp_min_angle,train_inp_min_emb = find_closest_training_image(emb_inpainting,train_emb_dict)
 
         # Maintain "closest" training images dictionary
         closest_train_image_dict[t_image_min_path] = train_inp_min_emb
@@ -189,10 +206,10 @@ def analyze_vectors(args):
         row.append(os.path.join(os.getcwd(),test_img_key))
         row.append(os.path.join(os.getcwd(),gz_path))
         row.append(t_image_min_path)
-        row.append(test_inp_cosine)
-        row.append(train_inp_min_cosine)
+        row.append(test_inp_angle)
+        row.append(train_inp_min_angle)
 
-        print('Analysis done for image : {} train_cosine : {} test_cosine : {}'.format(test_img_key,train_inp_min_cosine,test_inp_cosine))
+        print('Analysis done for image : {} train_angle : {} test_angle : {}'.format(test_img_key,train_inp_min_angle,test_inp_angle))
 
         sys.stdout.flush()
 
@@ -216,12 +233,12 @@ def analyze_vectors(args):
         image_list.append(Gz) # G(z_inpainting)
         image_list.append(read_and_crop_image(t_image_min_path,args.dataset)) # Closest training image w.r.t emb_inpainting
 
-        if test_inp_cosine <= train_inp_min_cosine: # Inpainting latent vector closer to test latent vector
+        if test_inp_angle <= train_inp_min_angle: # Inpainting latent vector closer to test latent vector
             generalize.append(row)
-            merge_and_save(image_list=image_list,idx=image_idx,root_dir = generalized_dir)
+            merge_and_save(image_list=image_list,idx=image_idx,root_dir = generalized_dir,dataset=args.dataset)
         else: # Inpainting latent vector closer to training image latent vector
             recall.append(row)
-            merge_and_save(image_list=image_list,idx=image_idx,root_dir = recall_dir)
+            merge_and_save(image_list=image_list,idx=image_idx,root_dir = recall_dir,dataset=args.dataset)
 
     print('Generalized inpaintings : {}'.format(len(generalize)))
     print('Recalled inpaintings : {}'.format(len(recall)))
