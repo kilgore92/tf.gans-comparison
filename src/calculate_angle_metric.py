@@ -176,9 +176,8 @@ def analyze_vectors(args):
     os.makedirs(recall_dir)
     os.makedirs(generalized_dir)
 
-    recall = []
-    generalize = []
     image_idx = 0
+    pseudo_df = []
 
     closest_train_inp_image_dict = {}
     closest_train_test_image_dict = {}
@@ -188,6 +187,7 @@ def analyze_vectors(args):
 
     # Iterate over the dict
     for gz_path,emb_inpainting in inpaint_emb_dict.items():
+        generalized_inp = 0
         row = []
         image_list = []
 
@@ -240,23 +240,19 @@ def analyze_vectors(args):
         image_list.append(read_and_crop_image(t_image_min_path_inp,args.dataset)) # Closest training image w.r.t emb_inpainting
         image_list.append(read_and_crop_image(t_image_min_path_test,args.dataset)) # Closest training image w.r.t emb_test
 
+        pseudo_df.append(row)
+
         if test_inp_angle <= train_inp_min_angle: # Inpainting latent vector closer to test latent vector
-            generalize.append(row)
             merge_and_save(image_list=image_list,idx=image_idx,root_dir = generalized_dir,dataset=args.dataset)
+            generalized_inp =+ 1
         else: # Inpainting latent vector closer to training image latent vector
-            recall.append(row)
             merge_and_save(image_list=image_list,idx=image_idx,root_dir = recall_dir,dataset=args.dataset)
 
-    print('Generalized inpaintings : {}'.format(len(generalize)))
-    print('Recalled inpaintings : {}'.format(len(recall)))
+    print('Generalized inpaintings : {}'.format(len(generalized_inp)))
 
-    if len(generalize) > 0:
-        df_gen = pd.DataFrame(data=np.asarray(generalize),columns=['Source Image Path','Gz Path','Closest Train Image Inpainting','Closest Train Image Test','Test-Gz Cosine','Train-Gz Cosine','Train-Test Cosine'])
-        df_gen.to_csv(os.path.join(outDir,'emb_results_gen.csv'))
+    df_results = pd.DataFrame(data=np.asarray(pseudo_df),columns=['Source Image Path','Gz Path','Closest Train Image Inpainting','Closest Train Image Test','Test-Gz Cosine','Train-Gz Cosine','Train-Test Cosine'])
+    df_gen.to_csv(os.path.join(outDir,'emb_results.csv'))
 
-    if len(recall) > 0:
-        df_recall = pd.DataFrame(data=np.asarray(recall),columns= ['Source Image Path','Gz Path','Closest Train Image Inpainting','Closest Train Image Test','Test-Gz Cosine','Train-Gz Cosine','Train-Test Cosine'])
-        df_recall.to_csv(os.path.join(outDir,'emb_results_recall.csv'))
 
     # Save the dict
     with open(os.path.join(outDir,'closest_train_inp_emb.pkl'),'wb') as f:
