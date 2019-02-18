@@ -248,10 +248,10 @@ def analyze_vectors(args):
         else: # Inpainting latent vector closer to training image latent vector
             merge_and_save(image_list=image_list,idx=image_idx,root_dir = recall_dir,dataset=args.dataset)
 
-    print('Generalized inpaintings : {}'.format(len(generalized_inp)))
+    print('Generalized inpaintings : {}'.format(generalized_inp))
 
     df_results = pd.DataFrame(data=np.asarray(pseudo_df),columns=['Source Image Path','Gz Path','Closest Train Image Inpainting','Closest Train Image Test','Test-Gz Cosine','Train-Gz Cosine','Train-Test Cosine'])
-    df_gen.to_csv(os.path.join(outDir,'emb_results.csv'))
+    df_results.to_csv(os.path.join(outDir,'emb_results.csv'))
 
 
     # Save the dict
