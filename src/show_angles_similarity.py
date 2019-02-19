@@ -19,7 +19,7 @@ def build_parser():
     parser.add_argument('--emb',type=str,help='Root dir where the embedding dictionaries are saved',default='/home/TUE/s162156/facenet/facenet/embeddings')
     return parser
 
-def find_training_image(emb_test,training_emb_dict,target_angle=30):
+def find_training_image(emb_test,training_emb_dict,target_angle=60):
     """
     Given the test embedding, returns the training image
     whose embedding is at the specified image w.r.t test embedding
@@ -32,7 +32,7 @@ def find_training_image(emb_test,training_emb_dict,target_angle=30):
     for t_image_path,emb_training in training_emb_dict.items():
         flag=False
         angle = central_angle_metric(emb_test,emb_training)
-        if round(angle) == target_angle:
+        if angle < target_angle:
             if flag is False:
                 example_training_image_path = t_image_path
                 flag = True
@@ -84,7 +84,6 @@ def show_images_angle_similarity(args):
     """
     training_emb_dict,test_emb_dict,_ = read_dict(root_dir = args.emb,model=None,dataset=args.dataset)
     train_images_dict = {} # Indexed by test image path, value is a list [#images at 30, at 60 and so on...]
-    angles = [60,90,120]
 
     out_dir = os.path.join(os.getcwd(),'angle_metric_sanity')
 
@@ -97,15 +96,13 @@ def show_images_angle_similarity(args):
         train_image_hist = [] # [0] : #training images at 30 degrees, [1] :# at 60 and so on ...
         image_list.append(read_and_crop_image(test_image_path,args.dataset)) # Add test image
 
-        for angle in angles:
-            example_training_path,num_training_images = find_training_image(emb_test=emb_test,training_emb_dict=training_emb_dict,target_angle=angle)
-            train_image_hist.append(num_training_images)
-            print('For {} :: {} training images found at {} degrees'.format(test_image_path,num_training_images,angle))
-            sys.stdout.flush()
-            if example_training_path is not None:
-                image_list.append(read_and_crop_image(example_training_path,args.dataset))
+        example_training_path,num_training_images = find_training_image(emb_test=emb_test,training_emb_dict=training_emb_dict,target_angle=60)
+        print('For {} :: {} training images found at 60 degrees'.format(test_image_path,num_training_images))
+        sys.stdout.flush()
+        if example_training_path is not None:
+            image_list.append(read_and_crop_image(example_training_path,args.dataset))
 
-        train_images_dict[test_image_path] = train_image_hist
+        train_images_dict[test_image_path] = num_training_images
 
         #Save the array of images
         test_image_idx = test_image_path.split('/')[-2]
@@ -120,7 +117,7 @@ def show_images_angle_similarity(args):
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
-    #show_images_angle_similarity(args)
-    create_angles_histogram(args)
+    show_images_angle_similarity(args)
+    #create_angles_histogram(args)
 
 
