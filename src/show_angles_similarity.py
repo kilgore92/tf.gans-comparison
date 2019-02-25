@@ -17,6 +17,7 @@ def build_parser():
     parser = ArgumentParser()
     parser.add_argument('--dataset',type=str,help='Dataset to analyze',default='celeba')
     parser.add_argument('--emb',type=str,help='Root dir where the embedding dictionaries are saved',default='/home/TUE/s162156/facenet/facenet/embeddings')
+    parser.add_argument('--draw_hist',action='store_true',help='Set to true to store histograms')
     return parser
 
 def find_training_image(emb_test,training_emb_dict,target_angle=60):
@@ -58,7 +59,7 @@ def create_angles_histogram(args):
     """
 
     training_emb_dict,test_emb_dict,_ = read_dict(root_dir = args.emb,model=None,dataset=args.dataset)
-    out_dir = os.path.join(os.getcwd(),'angle_metric_histogram')
+    out_dir = os.path.join(os.getcwd(),'angle_metric_histogram',args.dataset.lower())
 
     if os.path.exists(out_dir) is True:
         shutil.rmtree(out_dir)
@@ -77,15 +78,16 @@ def create_angles_histogram(args):
 
 
 
-def show_images_angle_similarity(args):
+def calculate_threshold_histogram(args):
     """
-    Displays Test Image + 30 deg example + 60 deg example + 90 deg example + 120 def example + 150 deg example + 180 def example
+    For each test image, count number of training images within
+    60 degrees and store it in a dict
 
     """
     training_emb_dict,test_emb_dict,_ = read_dict(root_dir = args.emb,model=None,dataset=args.dataset)
     train_images_dict = {} # Indexed by test image path, value is a list [#images at 30, at 60 and so on...]
 
-    out_dir = os.path.join(os.getcwd(),'angle_metric_sanity')
+    out_dir = os.path.join(os.getcwd(),'angle_metric_threshold_counts',args.dataset.lower())
 
     if os.path.exists(out_dir) is True:
         shutil.rmtree(out_dir)
@@ -117,7 +119,9 @@ def show_images_angle_similarity(args):
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
-    show_images_angle_similarity(args)
-    #create_angles_histogram(args)
+    if args.draw_hist is False:
+        calculate_threshold_histogram(args)
+    else:
+        create_angles_histogram(args)
 
 
