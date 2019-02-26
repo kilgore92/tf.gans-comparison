@@ -22,8 +22,7 @@ def build_parser():
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
     parser.add_argument('--batch_size',default=512, type=int,help='Batch size for generated images')
-    parser.add_argument('--gpu',type=str,default="0")
-    parser.add_argument('--gen',action='store_true',default=True)
+    parser.add_argument('--gen',action='store_true',default=False)
     return parser
 
 
@@ -59,7 +58,7 @@ def get_all_checkpoints(ckpt_dir, force=False):
     return ckpts
 
 
-def eval(model, name, dataset,batch_size, gpu = "1",load_all_ckpt=True,sample_dir=None):
+def eval(model, name, dataset,batch_size,load_all_ckpt=True,sample_dir=None):
     if name == None:
         name = model.name
     if sample_dir == None:
@@ -71,7 +70,6 @@ def eval(model, name, dataset,batch_size, gpu = "1",load_all_ckpt=True,sample_di
     tf.gfile.MakeDirs(dir_name)
 
     config = tf.ConfigProto()
-    config.gpu_options.visible_device_list = str(gpu)
     with tf.Session(config=config) as sess:
         #Load the GAN model
         restorer = tf.train.Saver()
@@ -95,6 +93,7 @@ def eval(model, name, dataset,batch_size, gpu = "1",load_all_ckpt=True,sample_di
                 fn = "{}_{}.jpg".format(batch,idx)
                 scipy.misc.imsave(os.path.join(dir_name, fn), fake_sample)
             print('Generated {} batches'.format(batch))
+            sys.stdout.flush()
 
 
 def save_gz(model,mname,dataset):
@@ -116,8 +115,8 @@ def save_gz(model,mname,dataset):
     os.makedirs(dir_path)
 
 
-    tf_config = tf.ConfigProto(device_count = {'GPU': 0})
-    tf_config.gpu_options.visible_device_list = ""
+    #tf_config = tf.ConfigProto(device_count = {'GPU': 0})
+    #tf_config.gpu_options.visible_device_list = ""
 
     with tf.device('/cpu:0'):
         with tf.Session(config=tf_config) as sess:
