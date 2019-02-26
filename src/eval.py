@@ -22,7 +22,6 @@ def build_parser():
     parser.add_argument('--name', help='default: name=model')
     parser.add_argument('--dataset', '-D', help='CelebA / LSUN', required=True)
     parser.add_argument('--batch_size',default=512, type=int,help='Batch size for generated images')
-    parser.add_argument('--gen',action='store_true',default=False)
     return parser
 
 
@@ -101,6 +100,7 @@ def save_gz(model,mname,dataset):
     From a pickled dictionary (image_id:z_inpainting),
     save the G(z_inpainting) images in a folder
 
+    TODO: This is a dead function, remove
     """
     # Read in the picked dict
     filename = 'latent_space_inpaint_'+'{}.pkl'.format(mname.upper())
@@ -157,9 +157,10 @@ if __name__ == "__main__":
     if FLAGS.name is None:
         FLAGS.name = FLAGS.model.lower()
     config.pprint_args(FLAGS)
-    # training=False => build generator only
-    model = config.get_model(FLAGS.model, FLAGS.name, training=False)
-    if FLAGS.gen is True:
-        save_gz(model=model,mname=FLAGS.name,dataset=FLAGS.dataset)
+
+    if FLAGS.model.lower() == 'dragan' or FLAGS.model.lower()=='dcgan-cons': # Pick the non-BN version of DRAGAN and DCGAN-CONS
+        model = config.get_model(FLAGS.model.upper(),FLAGS.model.lower(), training=True,batch_norm=False)
     else:
-        eval(model,dataset=FLAGS.dataset, name=FLAGS.name, batch_size = FLAGS.batch_size, load_all_ckpt=True)
+        model = config.get_model(FLAGS.model.upper(),FLAGS.model.lower(), training=True)
+
+    eval(model,dataset=FLAGS.dataset, name=FLAGS.name, batch_size = FLAGS.batch_size, load_all_ckpt=True)
