@@ -18,6 +18,7 @@ def build_parser():
     parser.add_argument('--dataset',type=str,help='Dataset to analyze',default='celeba')
     parser.add_argument('--emb',type=str,help='Root dir where the embedding dictionaries are saved',default='/home/TUE/s162156/facenet/facenet/embeddings')
     parser.add_argument('--draw_hist',action='store_true',help='Set to true to store histograms')
+    parser.add_argument('--threshold_angle',type=int,default=60,help='Set the threshold angle within which training image counts are stored')
     return parser
 
 def find_training_image(emb_test,training_emb_dict,target_angle=60):
@@ -81,11 +82,11 @@ def create_angles_histogram(args):
 def calculate_threshold_histogram(args):
     """
     For each test image, count number of training images within
-    60 degrees and store it in a dict
+    the threshold angle degrees and store it in a dict
 
     """
     training_emb_dict,test_emb_dict,_ = read_dict(root_dir = args.emb,model=None,dataset=args.dataset)
-    train_images_dict = {} # Indexed by test image path, value is a list [#images at 30, at 60 and so on...]
+    train_images_dict = {} # Indexed by test image path, value is the #training image <= threshold_angle
 
     out_dir = os.path.join(os.getcwd(),'angle_metric_threshold_counts',args.dataset.lower())
 
@@ -95,11 +96,11 @@ def calculate_threshold_histogram(args):
 
     for test_image_path,emb_test in test_emb_dict.items():
         image_list = []
-        train_image_hist = [] # [0] : #training images at 30 degrees, [1] :# at 60 and so on ...
+        train_image_hist = []
         image_list.append(read_and_crop_image(test_image_path,args.dataset)) # Add test image
 
-        example_training_path,num_training_images = find_training_image(emb_test=emb_test,training_emb_dict=training_emb_dict,target_angle=60)
-        print('For {} :: {} training images found at 60 degrees'.format(test_image_path,num_training_images))
+        example_training_path,num_training_images = find_training_image(emb_test=emb_test,training_emb_dict=training_emb_dict,target_angle=args.threshold_angle)
+        print('For {} :: {} training images found at {} degrees'.format(test_image_path,num_training_images,args.threshold_angle))
         sys.stdout.flush()
         if example_training_path is not None:
             image_list.append(read_and_crop_image(example_training_path,args.dataset))
