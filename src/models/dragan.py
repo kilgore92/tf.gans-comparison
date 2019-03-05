@@ -92,7 +92,7 @@ class DRAGAN(BaseModel):
             self.G_train_op = G_train_op
             self.G_loss = G_loss
             self.D_loss = D_loss
-            self.fake_sample = G
+            self.G = G
             self.global_step = global_step
             self.D_grad_norm = D_xhat_grad_norm
 
@@ -103,7 +103,7 @@ class DRAGAN(BaseModel):
             # Reduce the difference in the masked part -- TODO : Add weighting term (from paper) to the mask*image product
             self.contextual_loss = tf.reduce_sum(
                 tf.contrib.layers.flatten(
-                    tf.abs(tf.multiply(self.mask, self.fake_sample) - tf.multiply(self.mask, self.X))), 1)
+                    tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.X))), 1)
 
             # The reconstructed/completed image must also "fool" the discriminator
             self.perceptual_loss = self.G_loss

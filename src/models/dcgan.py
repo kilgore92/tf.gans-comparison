@@ -18,17 +18,18 @@ class DCGAN(BaseModel):
 
     def _build_train_graph(self):
         with tf.variable_scope(self.name):
-            X = tf.placeholder(tf.float32, [None] + self.shape)
-            z = tf.placeholder(tf.float32, [None, self.z_dim])
-            global_step = tf.Variable(0, name='global_step', trainable=False)
-            G = self._generator(z)
-            D_real_prob, D_real_logits = self._discriminator(X)
-            D_fake_prob, D_fake_logits = self._discriminator(G, reuse=True)
+            self.X = tf.placeholder(tf.float32, [None] + self.shape)
+            self.z = tf.placeholder(tf.float32, [None, self.z_dim])
+            self.global_step = tf.Variable(0, name='global_step', trainable=False)
+            self.G = self._generator(self.z)
+            self.D_real_prob, self.D_real_logits = self._discriminator(self.X)
+            self.D_fake_prob, self.D_fake_logits = self._discriminator(self.G, reuse=True)
 
-            G_loss = tf.losses.sigmoid_cross_entropy(tf.ones_like(D_fake_logits), logits=D_fake_logits)
-            D_loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(D_real_logits), logits=D_real_logits)
-            D_loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(D_fake_logits), logits=D_fake_logits)
-            D_loss = D_loss_real + D_loss_fake
+            #G_loss = tf.losses.sigmoid_cross_entropy(tf.ones_like(D_fake_logits), logits=D_fake_logits)
+            self.G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,labels=tf.ones_like(self.D_fake_prob)))
+            self.D_loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(self.D_real_logits), logits=self.D_real_logits)
+            self.D_loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(self.D_fake_logits), logits=self.D_fake_logits)
+            self.D_loss = self.D_loss_real + self.D_loss_fake
 
             D_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name+'/D/')
             G_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name+'/G/')
@@ -37,64 +38,53 @@ class DCGAN(BaseModel):
             G_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name+'/G/')
 
             # DRAGAN term
-            shape = tf.shape(X)
-            eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
-            x_mean, x_var = tf.nn.moments(X, axes=[0,1,2,3])
-            x_std = tf.sqrt(x_var) # magnitude of noise decides the size of local region
-            noise = 0.5*x_std*eps # delta in paper
-            # Author suggested U[0,1] in original paper, but he admitted it is bug in github
-            # (https://github.com/kodalinaveen3/DRAGAN). It should be two-sided.
-            alpha = tf.random_uniform(shape=[shape[0], 1, 1, 1], minval=-1., maxval=1.)
-            xhat = tf.clip_by_value(X + alpha*noise, -1., 1.) # x_hat should be in the space of X
+           # shape = tf.shape(self.X)
+           # eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
+           # x_mean, x_var = tf.nn.moments(self.X, axes=[0,1,2,3])
+           # x_std = tf.sqrt(x_var) # magnitude of noise decides the size of local region
+           # noise = 0.5*x_std*eps # delta in paper
+           # # Author suggested U[0,1] in original paper, but he admitted it is bug in github
+           # # (https://github.com/kodalinaveen3/DRAGAN). It should be two-sided.
+           # alpha = tf.random_uniform(shape=[shape[0], 1, 1, 1], minval=-1., maxval=1.)
+           # xhat = tf.clip_by_value(self.X + alpha*noise, -1., 1.) # x_hat should be in the space of X
 
-            D_xhat_prob, D_xhat_logits = self._discriminator(xhat, reuse=True)
-            # Originally, the paper suggested D_xhat_prob instead of D_xhat_logits.
-            # But D_xhat_prob (D with sigmoid) causes numerical problem (NaN in gradient).
-            D_xhat_grad = tf.gradients(D_xhat_logits, xhat)[0] # gradient of D(x_hat)
-            D_xhat_grad_norm = tf.norm(slim.flatten(D_xhat_grad), axis=1)  # l2 norm
+           # D_xhat_prob, D_xhat_logits = self._discriminator(xhat, reuse=True)
+           # # Originally, the paper suggested D_xhat_prob instead of D_xhat_logits.
+           # # But D_xhat_prob (D with sigmoid) causes numerical problem (NaN in gradient).
+           # D_xhat_grad = tf.gradients(D_xhat_logits, xhat)[0] # gradient of D(x_hat)
+           # D_xhat_grad_norm = tf.norm(slim.flatten(D_xhat_grad), axis=1)  # l2 norm
 
-            # WGAN-GP term
-            eps = tf.random_uniform(shape=[tf.shape(X)[0], 1, 1, 1], minval=0., maxval=1.)
-            x_hat_gp = eps*X + (1.-eps)*G
-            D_xhat_gp = self._discriminator(x_hat_gp, reuse=True)
-            D_xhat_grad_gp = tf.gradients(D_xhat_gp, x_hat_gp)[0] # gradient of D(x_hat)
-            D_xhat_grad_norm_gp = tf.norm(slim.flatten(D_xhat_grad_gp), axis=1)  # l2 norm
+           # # WGAN-GP term
+           # eps = tf.random_uniform(shape=[shape[0], 1, 1, 1], minval=0., maxval=1.)
+           # x_hat_gp = eps*X + (1.-eps)*self.G
+           # D_xhat_gp = self._discriminator(x_hat_gp, reuse=True)
+           # D_xhat_grad_gp = tf.gradients(D_xhat_gp, x_hat_gp)[0] # gradient of D(x_hat)
+           # D_xhat_grad_norm_gp = tf.norm(slim.flatten(D_xhat_grad_gp), axis=1)  # l2 norm
 
 
             with tf.control_dependencies(D_update_ops):
-                D_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
-                    minimize(D_loss, var_list=D_vars)
+                self.D_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
+                    minimize(self.D_loss, var_list=D_vars)
             with tf.control_dependencies(G_update_ops):
                 # learning rate 2e-4/1e-3
-                G_train_op = tf.train.AdamOptimizer(learning_rate=self.G_lr, beta1=self.beta1).\
-                    minimize(G_loss, var_list=G_vars, global_step=global_step)
+                self.G_train_op = tf.train.AdamOptimizer(learning_rate=self.G_lr, beta1=self.beta1).\
+                    minimize(self.G_loss, var_list=G_vars, global_step=self.global_step)
 
             # summaries
             # per-step summary
             self.summary_op = tf.summary.merge([
-                tf.summary.scalar('G_loss', G_loss),
-                tf.summary.scalar('D_loss', D_loss),
-                tf.summary.scalar('D_loss/real', D_loss_real),
-                tf.summary.scalar('D_loss/fake', D_loss_fake)
+                tf.summary.scalar('G_loss', self.G_loss),
+                tf.summary.scalar('D_loss', self.D_loss),
+                tf.summary.scalar('D_loss/real', self.D_loss_real),
+                tf.summary.scalar('D_loss/fake', self.D_loss_fake)
             ])
 
             # sparse-step summary
-            tf.summary.image('fake_sample', G, max_outputs=self.FAKE_MAX_OUTPUT)
-            tf.summary.histogram('real_probs', D_real_prob)
-            tf.summary.histogram('fake_probs', D_fake_prob)
+            tf.summary.image('fake_sample', self.G, max_outputs=self.FAKE_MAX_OUTPUT)
+            tf.summary.histogram('real_probs', self.D_real_prob)
+            tf.summary.histogram('fake_probs', self.D_fake_prob)
             self.all_summary_op = tf.summary.merge_all()
 
-            # accesible points
-            self.X = X
-            self.z = z
-            self.D_train_op = D_train_op
-            self.G_train_op = G_train_op
-            self.G_loss = G_loss
-            self.D_loss = D_loss
-            self.fake_sample = G
-            self.global_step = global_step
-            self.D_grad_norm = D_xhat_grad_norm
-            self.D_grad_norm_gp = D_xhat_grad_norm_gp
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')
@@ -103,15 +93,18 @@ class DCGAN(BaseModel):
             # Reduce the difference in the masked part -- TODO : Add weighting term (from paper) to the mask*image product
             self.contextual_loss = tf.reduce_sum(
                 tf.contrib.layers.flatten(
-                    tf.abs(tf.multiply(self.mask, self.fake_sample) - tf.multiply(self.mask, self.X))), 1)
+                    tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.X))), 1)
+
+            # Perceptual loss
+            #self.perceptual_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,labels=tf.ones_like(self.D_fake_prob)))
 
             # The reconstructed/completed image must also "fool" the discriminator
-            self.perceptual_loss = self.G_loss
-            self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
+            self.complete_loss = self.contextual_loss + self.lam*self.G_loss
             self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
 
     def _discriminator(self, X, reuse=False):
         with tf.variable_scope('D', reuse=reuse):
+            print('Bulding discriminator graph')
             net = X
             width = self.shape[0]
             filter_num = 64

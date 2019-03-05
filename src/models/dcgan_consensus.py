@@ -73,7 +73,7 @@ class DCGAN_CONS(BaseModel):
             ])
 
             # sparse-step summary
-            tf.summary.image('fake_sample', G, max_outputs=self.FAKE_MAX_OUTPUT)
+            tf.summary.image('G', G, max_outputs=self.FAKE_MAX_OUTPUT)
             tf.summary.histogram('real_probs', D_real_prob)
             tf.summary.histogram('fake_probs', D_fake_prob)
             self.all_summary_op = tf.summary.merge_all()
@@ -85,7 +85,7 @@ class DCGAN_CONS(BaseModel):
             self.G_train_op = G_train_op
             self.G_loss = G_loss
             self.D_loss = D_loss
-            self.fake_sample = G
+            self.G = G
             self.global_step = global_step
             self.reg_term = gamma*L_reg #For debug purposes
 
@@ -96,7 +96,7 @@ class DCGAN_CONS(BaseModel):
             # Reduce the difference in the masked part -- TODO : Add weighting term (from paper) to the mask*image product
             self.contextual_loss = tf.reduce_sum(
                 tf.contrib.layers.flatten(
-                    tf.abs(tf.multiply(self.mask, self.fake_sample) - tf.multiply(self.mask, self.X))), 1)
+                    tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.X))), 1)
 
             # The reconstructed/completed image must also "fool" the discriminator
             self.perceptual_loss = self.G_loss
