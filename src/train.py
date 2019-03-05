@@ -150,10 +150,10 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                 if global_step % 10 == 0:
                     #Monitor losses
                     G_loss,D_loss = sess.run([model.G_loss,model.D_loss],feed_dict={model.X:batch_X,model.z:batch_z})
-                    if store_grads is True:
-                        d_grad_norm.append(sess.run(model.D_grad_norm,feed_dict = {model.X : batch_X, model.z : batch_z}))
-                        if model.name == 'dcgan':
-                            d_grad_norm_gp.append(sess.run(model.D_grad_norm_gp,feed_dict = {model.X : batch_X, model.z : batch_z}))
+                  #  if store_grads is True:
+                  #      d_grad_norm.append(sess.run(model.D_grad_norm,feed_dict = {model.X : batch_X, model.z : batch_z}))
+                  #      if model.name == 'dcgan':
+                  #          d_grad_norm_gp.append(sess.run(model.D_grad_norm_gp,feed_dict = {model.X : batch_X, model.z : batch_z}))
 
                     print('Global Step {} :: Generator loss = {} Discriminator loss = {}'.format(global_step,G_loss,D_loss))
 
@@ -188,7 +188,7 @@ def save_samples(sess,val_z,model,dir_name,global_step,shape):
     Function to save samples during training
 
     """
-    fake_samples = sess.run(model.fake_sample, {model.z: val_z})
+    fake_samples = sess.run(model.G, {model.z: val_z})
     fake_samples = 255*((fake_samples + 1.) / 2.)
     merged_samples = utils.merge(fake_samples, size=shape)
     fn = "{:0>6d}.png".format(global_step)
