@@ -224,11 +224,11 @@ def complete(args):
                     model.mask: mask,
                     model.X: batch_images,
                     }
-                run = [model.complete_loss, model.grad_complete_loss, model.fake_sample]
-                loss, g, G_imgs= sess.run(run, feed_dict=fd)
+                run = [model.complete_loss, model.perceptual_loss,model.grad_complete_loss, model.fake_sample]
+                loss,g_loss, g, G_imgs= sess.run(run, feed_dict=fd)
 
                 if i%100 == 0:
-                    print('Timestamp: {:%Y-%m-%d %H:%M:%S} Batch : {}/{}. Iteration : {}. Mean loss : {}'.format(datetime.now(),idx,batch_idxs,i, np.mean(loss[0:batchSz])))
+                    print('Timestamp: {:%Y-%m-%d %H:%M:%S} Batch : {}/{}. Iteration : {}. Mean complete loss : {} Mean G loss: {}'.format(datetime.now(),idx,batch_idxs,i, np.mean(loss[0:batchSz]),np.mean(g_loss[0:batchSz])))
 
                     inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                     completed = []
