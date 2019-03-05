@@ -1,4 +1,4 @@
 #!/bin/bash
 source activate gans
-python src/complete.py --model $1 --dataset celeba --images /mnt/server-home/TUE/s162156/datasets/celebA/celebA_test
+python src/complete.py --model $1 --dataset celeba --images /mnt/server-home/TUE/s162156/datasets/celeba/celeba_test
 source deactivate gans
