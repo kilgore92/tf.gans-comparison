@@ -34,7 +34,7 @@ def generate_image(model,sess,z):
     For a given z, return G(z)
 
     """
-    g_img = sess.run(model.fake_sample,feed_dict = {model.z : z})
+    g_img = sess.run(model.G,feed_dict = {model.z : z})
     return rescale_image(g_img[0])
 
 def get_all_checkpoints(ckpt_dir, force=False):
@@ -85,12 +85,12 @@ def eval(model, name, dataset,batch_size,load_all_ckpt=True,sample_dir=None):
 
         for batch in range(n_batches):
             z_ = sample_z([batch_size, model.z_dim])
-            fake_samples = sess.run(model.fake_sample, {model.z: z_})
+            fake_images = sess.run(model.G, {model.z: z_})
             # inverse transform: [-1, 1] => [0, 1]
-            fake_samples = (fake_samples + 1.) / 2.
-            for fake_sample,idx in zip(fake_samples,range(len(fake_samples))):
+            fake_images = (fake_images + 1.) / 2.
+            for fake_image,idx in zip(fake_images,range(len(fake_images))):
                 fn = "{}_{}.jpg".format(batch,idx)
-                scipy.misc.imsave(os.path.join(dir_name, fn), fake_sample)
+                scipy.misc.imsave(os.path.join(dir_name, fn), fake_image)
             print('Generated {} batches'.format(batch))
             sys.stdout.flush()
 
