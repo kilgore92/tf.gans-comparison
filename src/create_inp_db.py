@@ -7,6 +7,8 @@ import shutil
 import random
 import sys
 
+models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan','dragan_bn','dcgan_sim']
+
 def build_parser():
 
     """
@@ -37,7 +39,6 @@ def create_database(args):
 
     os.makedirs(outDir)
 
-    models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan','dragan_bn','dcgan_sim']
     source_dirs = []
     for model in models:
         dir_path = os.path.join(os.getcwd(),str(args.rootDir),str(args.dataset.lower()),model,str(args.mask))

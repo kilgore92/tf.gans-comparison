@@ -12,6 +12,8 @@ from convert import center_crop
 import cv2
 import pickle
 from datetime import datetime
+import matplotlib.pyplot as plt
+
 slim = tf.contrib.slim
 
 def build_parser():
@@ -177,6 +179,10 @@ def complete(args):
             print('Invalid checkpoint directory')
             assert(False)
 
+        critic = False
+
+        if model.name == 'wgan' or model.name == 'wgan-gp':
+            critic = True
 
         for idx in range(0, batch_idxs):
             l = idx*args.batch_size
@@ -187,13 +193,16 @@ def complete(args):
             batch_images = np.array(batch).astype(np.float32)
             masked_images = np.multiply(batch_images, mask)
             if batchSz < args.batch_size:
-                print(batchSz)
                 padSz = ((0, int(args.batch_size-batchSz)), (0,0), (0,0), (0,0))
                 batch_images = np.pad(batch_images, padSz, 'constant')
                 batch_images = batch_images.astype(np.float32)
                 masked_images = np.multiply(batch_images, mask)
 
+
             zhats = np.random.uniform(-1, 1, size=(args.batch_size, model.z_dim))
+
+            disc_score_tracker = [] #tracks the discriminator/critic score for every image in the batch
+
             # Variables for ADAM
             m = 0
             v = 0
@@ -224,12 +233,26 @@ def complete(args):
                     model.mask: mask,
                     model.X: batch_images,
                     }
-                run = [model.complete_loss, model.G_loss,model.contextual_loss,model.grad_complete_loss, model.G]
-                complete_loss,generator_loss,contextual_loss, g, G_imgs= sess.run(run, feed_dict=fd)
+                run = [model.complete_loss, model.perceptual_loss , model.contextual_loss,model.grad_complete_loss, model.G]
+                complete_loss,perceptual_loss,contextual_loss, g, G_imgs= sess.run(run, feed_dict=fd)
+
+
+                if model.name!='wgan' and model.name!='wgan-gp':
+                    disc_scores = sess.run(model.D_fake_prob,feed_dict={model.z:zhats})
+                else:
+                    disc_scores = sess.run(model.C_fake,feed_dict={model.z:zhats})
+
+                disc_score_tracker.append(disc_scores.flatten())
 
 
                 if i%100 == 0:
-                    print('Timestamp: {:%Y-%m-%d %H:%M:%S} Batch : {}/{}. Iteration : {}. Mean complete loss : {} Perceptual loss : {} Contextual Loss: {}'.format(datetime.now(),idx,batch_idxs,i, np.mean(complete_loss[0:batchSz]),generator_loss,np.mean(contextual_loss[0:batchSz])))
+                    # Compute mean score given to this batch of images by the Discriminator
+                    if model.name!='wgan' or model.name.lower()!='wgan-gp':
+                        mean_disc_score = np.mean(disc_scores)
+                    else:
+                        mean_disc_score = np.mean(disc_scores)
+
+                    print('Timestamp: {:%Y-%m-%d %H:%M:%S} Batch : {}/{}. Iteration : {}. Mean complete loss : {} Mean Perceptual loss : {} Mean Contextual Loss: {} Discriminator/Critic Score: {}'.format(datetime.now(),idx,batch_idxs,i, np.mean(complete_loss[0:batchSz]),perceptual_loss,np.mean(contextual_loss[0:batchSz]),mean_disc_score))
 
                     inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                     completed = []
@@ -284,6 +307,10 @@ def complete(args):
                     print('Invalid clipping mode')
                     assert(False)
 
+            #Save the matrix for the batch once done
+            disc_score_tracker = np.asarray(disc_score_tracker)
+            with open(os.path.join(dumpDir,'disc_scores_batch_{}.pkl'.format(idx)),'wb') as f:
+                pickle.dump(disc_score_tracker,f)
 
 if __name__ == '__main__':
     parser = build_parser()

@@ -80,7 +80,7 @@ class DCGAN_GP(BaseModel):
             self.G = G
             self.global_step = global_step
             self.D_grad_norm = D_xhat_grad_norm
-
+            self.D_fake_prob = D_fake_prob
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')
             self.lam = 0.003 # Value taken from paper

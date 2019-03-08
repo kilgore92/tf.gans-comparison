@@ -95,11 +95,11 @@ class DCGAN(BaseModel):
                 tf.contrib.layers.flatten(
                     tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.X))), 1)
 
-            # Perceptual loss
-            #self.perceptual_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,labels=tf.ones_like(self.D_fake_prob)))
+            # Perceptual loss -- we don't need to avg. over different inp processes, they proceed independently of each other!
+            self.perceptual_loss = self.G_loss
 
             # The reconstructed/completed image must also "fool" the discriminator
-            self.complete_loss = self.contextual_loss + self.lam*self.G_loss
+            self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
             self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
 
     def _discriminator(self, X, reuse=False):

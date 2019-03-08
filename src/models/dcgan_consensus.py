@@ -88,6 +88,7 @@ class DCGAN_CONS(BaseModel):
             self.G = G
             self.global_step = global_step
             self.reg_term = gamma*L_reg #For debug purposes
+            self.D_fake_prob = D_fake_prob
 
             # Image In-painting
             self.mask = tf.placeholder(tf.float32, self.shape, name='mask')

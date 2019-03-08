@@ -56,6 +56,23 @@ def find_closest_training_image(emb_inpainting,train_emb_dict):
 
     return min_training_image_path,min_central_angle,min_training_image_emb
 
+def find_avg_test_image_angle(emb_test,train_emb_dict):
+    """
+    Finds average distance for a given test image w.r.t the training
+    dataset
+
+    """
+    avg_angle = 0.0
+    for t_image_path,emb_training in train_emb_dict.items():
+        central_angle = central_angle_metric(emb_test,emb_training)
+        avg_angle += central_angle
+        print(central_angle)
+
+    avg_angle = avg_angle/len(train_emb_dict)
+    return avg_angle
+
+
+
 def central_angle_metric(u,v,r=1.0):
     """
     For 2 vectors u,v lying on a (hyper-)sphere of radius r,
@@ -201,21 +218,19 @@ def analyze_vectors(args):
         # Find the closest training image in the embedding space w.r.t G(z)
         t_image_min_path_inp, train_inp_min_angle,train_inp_min_emb = find_closest_training_image(emb_inpainting,train_emb_dict)
         # Find the closest trainig image in the embedding space w.r.t test image
-        t_image_min_path_test,train_test_min_angle,train_test_min_emb = find_closest_training_image(emb_test,train_emb_dict)
+        avg_test_angle = find_avg_test_image_angle(emb_test,train_emb_dict)
 
         # Maintain "closest" training images dictionary
         closest_train_inp_image_dict[t_image_min_path_inp] = train_inp_min_emb
-        closest_train_test_image_dict[t_image_min_path_test] = train_test_min_emb
 
         row.append(os.path.join(os.getcwd(),test_img_key))
         row.append(os.path.join(os.getcwd(),gz_path))
         row.append(t_image_min_path_inp)
-        row.append(t_image_min_path_test)
         row.append(test_inp_angle)
         row.append(train_inp_min_angle)
-        row.append(train_test_min_angle)
+        row.append(avg_test_angle)
 
-        print('Analysis done for image : {} train_inp_angle : {} train_test_angle : {} test_inp_angle : {}'.format(test_img_key,train_inp_min_angle,train_test_min_angle,test_inp_angle))
+        print('Analysis done for image : {} train_inp_angle : {} avg_test_angle : {} test_inp_angle : {}'.format(test_img_key,train_inp_min_angle,avg_test_angle,test_inp_angle))
 
         sys.stdout.flush()
 
@@ -238,7 +253,6 @@ def analyze_vectors(args):
         image_list.append(inpImg_overlay) # Inpainting -- overlay
         image_list.append(Gz) # G(z_inpainting)
         image_list.append(read_and_crop_image(t_image_min_path_inp,args.dataset)) # Closest training image w.r.t emb_inpainting
-        image_list.append(read_and_crop_image(t_image_min_path_test,args.dataset)) # Closest training image w.r.t emb_test
 
         pseudo_df.append(row)
 
@@ -250,18 +264,13 @@ def analyze_vectors(args):
 
     print('Generalized inpaintings : {}'.format(generalized_inp))
 
-    df_results = pd.DataFrame(data=np.asarray(pseudo_df),columns=['Source Image Path','Gz Path','Closest Train Image Inpainting','Closest Train Image Test','Test-Gz Cosine','Train-Gz Cosine','Train-Test Cosine'])
+    df_results = pd.DataFrame(data=np.asarray(pseudo_df),columns=['Source Image Path','Gz Path','Closest Train Image Inpainting','Test-Gz Cosine','Train-Gz Cosine','Avg Test Angle'])
     df_results.to_csv(os.path.join(outDir,'emb_results.csv'))
 
 
     # Save the dict
     with open(os.path.join(outDir,'closest_train_inp_emb.pkl'),'wb') as f:
         pickle.dump(closest_train_inp_image_dict,f)
-    with open(os.path.join(outDir,'closest_train_test_emb.pkl'),'wb') as f:
-        pickle.dump(closest_train_test_image_dict,f)
-
-
-
 
 def generate_inpainting(testImg,mask,Gz):
     """
