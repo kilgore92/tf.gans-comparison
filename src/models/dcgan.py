@@ -91,7 +91,7 @@ class DCGAN(BaseModel):
             self.lam = 0.003 # Value taken from paper
 
             # Reduce the difference in the masked part -- TODO : Add weighting term (from paper) to the mask*image product
-            self.contextual_loss = tf.reduce_sum(
+            self.contextual_loss = tf.reduce_mean(
                 tf.contrib.layers.flatten(
                     tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.X))), 1)
 
