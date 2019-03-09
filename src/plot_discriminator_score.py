@@ -46,18 +46,19 @@ def plot_discriminator_score(dataset):
 
 
 def create_plot(disc_score_list,image_idx,save_folder,critic=False,nIter=1500):
-        plt.figure(figsize=(20,10))
+        plt.figure(figsize=(25,15))
         plt.plot(disc_score_list)
-        plt.xlabel('Optimization Iterations',fontsize=20)
+        plt.xlabel('Optimization Iterations',fontsize=40)
         if critic == True:
-            plt.ylabel('Wasserstein Distance estimated by Critic',fontsize=20)
+            plt.ylabel('Wasserstein Distance',fontsize=40)
         else:
-            plt.ylabel('Real Image probability estimated by Discriminator',fontsize=20)
+            plt.ylabel('Discriminator Score',fontsize=40)
 
         if critic == False:
             plt.ylim(0,1)
         else:
             plt.ylim(0,5)
+        plt.tick_params(labelsize=30)
 
         fname=os.path.join(save_folder,'inp_trends_{}.jpg'.format(image_idx))
         plt.savefig(fname)
