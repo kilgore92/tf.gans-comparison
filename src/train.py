@@ -10,6 +10,9 @@ import utils, config
 import shutil
 import scipy.misc
 import pickle
+import matplotlib as mlib
+mlib.use('Agg')
+import matplotlib.pyplot as plt
 
 def build_parser():
     parser = ArgumentParser()
@@ -117,6 +120,7 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
         # Use a (fixed) validation z and keep checking images over the training loop to detect mode collapse/image quality
 
         val_z = sample_z([batch_size,model.z_dim])
+        w_dist_tracker = []
 
         ckpt = tf.train.get_checkpoint_state(ckpt_path)
         if ckpt:
@@ -138,6 +142,10 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                     if model.name == 'wgan' or model.name == 'wgan-gp':
                         for step in range(n_critic): #Train critic till optimality for WGAN or WGAN-GP
                             _, summary = sess.run([model.D_train_op, summary_op], {model.X: batch_X, model.z: batch_z})
+                        # Get the W-distance estimate
+                        #w_dist = sess.run(model.W_dist,feed_dict={model.X:batch_X,model.z:batch_z})
+                        #w_dist_tracker.append(w_dist)
+
                     else:
                         _, summary = sess.run([model.D_train_op, summary_op], {model.X: batch_X, model.z: batch_z})
 
@@ -176,6 +184,19 @@ def train(model, dataset,input_op, num_epochs, batch_size, n_examples, ckpt_step
                     save_file = os.path.join(ckpt_path,'{}_grads_gp.pkl'.format(model.name))
                     with open(save_file,'wb') as f:
                         pickle.dump(d_grad_norm_gp,f)
+
+                #FIXME: Debug, safe to remove later
+               # if model.name == 'wgan' or model.name == 'wgan-gp':
+               #     w_dist_tracker = np.asarray(w_dist_tracker)
+               #     w_dist_tracker = w_dist_tracker.flatten() #Just in case, there are nested lists inside
+               #     plt.figure(figsize=(25,15))
+               #     plt.plot(w_dist_tracker)
+               #     plt.xlabel('Training Iterations',fontsize=40)
+               #     plt.ylabel('Wasserstein Distance',fontsize=40)
+               #     plt.tick_params(labelsize=30)
+               #     fname=os.path.join('w_distance_{}.jpg'.format(model.name.lower()))
+               #     plt.savefig(fname)
+               #     plt.close('all')
 
 
             coord.request_stop()
