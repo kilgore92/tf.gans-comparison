@@ -5,12 +5,10 @@ sys.path.append(os.path.join(os.getcwd(),'src'))
 from argparse import ArgumentParser
 import utils, config
 import shutil
-import scipy.misc
-import cv2
 import pickle
 import config
-import pandas as pd
-from calculate_angle_metric import read_dict,merge_and_save,central_angle_metric,read_and_crop_image
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 models = ['dcgan','wgan','dcgan-gp','wgan-gp','dcgan-cons','dragan','dragan_bn','dcgan_sim']
@@ -24,14 +22,11 @@ def plot_discriminator_score(dataset):
     """
 
     inp_dir = os.path.join(os.getcwd(),'completions',dataset.lower())
+    imagesdb_dir = os.path.join(os.getcwd(),'imagesdb',dataset.lower())
     for model in models:
         print('Plotting trends for {}'.format(model))
         sys.stdout.flush()
         file_dir = os.path.join(inp_dir,model.lower(),'center')
-        results_dir = os.path.join(file_dir,'disc_score_trends')
-        if os.path.exists(results_dir) is True:
-            shutil.rmtree(results_dir)
-        os.makedirs(results_dir)
         for batch_id in range(2):
             pkl_file_path = os.path.join(file_dir,'disc_scores_batch_{}.pkl'.format(batch_id))
             with open(pkl_file_path,'rb') as f:
@@ -40,12 +35,16 @@ def plot_discriminator_score(dataset):
             _,batch_size = disc_scores.shape
             for idx in range(batch_size):
                 file_idx = batch_id*batch_size + idx
+                results_dir = os.path.join(imagesdb_dir,str(file_idx),'discriminator_scores')
+                if os.path.exists(results_dir) is False:
+                    os.makedirs(results_dir)
                 disc_score_list = disc_scores[:,idx]
                 critic = ((model == 'wgan') or (model == 'wgan-gp'))
-                create_plot(disc_score_list=disc_score_list,image_idx=file_idx,save_folder=results_dir,critic=critic)
+                fname = os.path.join(results_dir,'{}_disc_scores.jpg'.format(model.lower()))
+                create_plot(disc_score_list=disc_score_list,image_idx=file_idx,fname=fname,critic=critic)
 
 
-def create_plot(disc_score_list,image_idx,save_folder,critic=False,nIter=1500):
+def create_plot(disc_score_list,image_idx,fname,critic=False,nIter=1500):
         plt.figure(figsize=(25,15))
         plt.plot(disc_score_list)
         plt.xlabel('Optimization Iterations',fontsize=40)
@@ -60,7 +59,6 @@ def create_plot(disc_score_list,image_idx,save_folder,critic=False,nIter=1500):
             plt.ylim(0,5)
         plt.tick_params(labelsize=30)
 
-        fname=os.path.join(save_folder,'inp_trends_{}.jpg'.format(image_idx))
         plt.savefig(fname)
         plt.close('all')
 
