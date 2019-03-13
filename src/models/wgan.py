@@ -117,6 +117,10 @@ class WGAN(BaseModel):
             self.perceptual_loss = self.G_loss
             self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
             self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
+            self.grad_perceptual_loss = tf.gradients(self.perceptual_loss,self.z)
+            self.grad_contextual_loss = tf.gradients(self.contextual_loss,self.z)
+            self.grad_norm_perceptual_loss = tf.norm(self.grad_perceptual_loss,axis=1)
+            self.grad_norm_contextual_loss = tf.norm(self.grad_contextual_loss,axis=1)
 
     def _critic(self, X, reuse=False):
         ''' K-Lipschitz function '''

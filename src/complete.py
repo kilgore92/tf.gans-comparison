@@ -12,6 +12,8 @@ from convert import center_crop
 import cv2
 import pickle
 from datetime import datetime
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 slim = tf.contrib.slim
@@ -202,7 +204,8 @@ def complete(args):
             zhats = np.random.uniform(-1, 1, size=(args.batch_size, model.z_dim))
 
             disc_score_tracker = [] #tracks the discriminator/critic score for every image in the batch
-
+            perceptual_loss_grad = []
+            contextual_loss_grad = []
             # Variables for ADAM
             m = 0
             v = 0
@@ -233,9 +236,12 @@ def complete(args):
                     model.mask: mask,
                     model.X: batch_images,
                     }
-                run = [model.complete_loss, model.perceptual_loss , model.contextual_loss,model.grad_complete_loss, model.G]
-                complete_loss,perceptual_loss,contextual_loss, g, G_imgs= sess.run(run, feed_dict=fd)
+                run = [model.complete_loss, model.perceptual_loss , model.contextual_loss,model.grad_complete_loss, model.G,model.grad_norm_perceptual_loss,model.grad_norm_contextual_loss]
+                complete_loss,perceptual_loss,contextual_loss, g, G_imgs, grad_norm_perceptual_loss,grad_norm_contextual_loss = sess.run(run, feed_dict=fd)
 
+                #Capture the gradient norms of both loss components
+                perceptual_loss_grad.append(grad_norm_perceptual_loss[0])
+                contextual_loss_grad.append(grad_norm_contextual_loss[0])
 
                 if model.name!='wgan' and model.name!='wgan-gp':
                     disc_scores = sess.run(model.D_fake_prob,feed_dict={model.z:zhats})
@@ -309,8 +315,17 @@ def complete(args):
 
             #Save the matrix for the batch once done
             disc_score_tracker = np.asarray(disc_score_tracker)
+            perceptual_loss_grad = np.asarray(perceptual_loss_grad)
+            contextual_loss_grad = np.asarray(contextual_loss_grad)
+
             with open(os.path.join(dumpDir,'disc_scores_batch_{}.pkl'.format(idx)),'wb') as f:
                 pickle.dump(disc_score_tracker,f)
+
+            with open(os.path.join(dumpDir,'p_loss_grad_batch_{}.pkl'.format(idx)),'wb') as f:
+                pickle.dump(perceptual_loss_grad,f)
+
+            with open(os.path.join(dumpDir,'c_loss_grad_batch_{}.pkl'.format(idx)),'wb') as f:
+                pickle.dump(contextual_loss_grad,f)
 
 if __name__ == '__main__':
     parser = build_parser()

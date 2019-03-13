@@ -15,6 +15,22 @@ import scipy.misc
 import numpy as np
 
 
+def center_crop(im, output_size):
+    output_height, output_width = output_size
+    h, w = im.shape[:2]
+    short_edge = min(h,w)
+    if h < output_height and w < output_width:
+        raise ValueError("image is small")
+
+    offset_h = int((h - short_edge) / 2)
+    offset_w = int((w - short_edge) / 2)
+    center_crop =  im[offset_h:offset_h+short_edge, offset_w:offset_w+short_edge, :]
+    resized_crop = scipy.misc.imresize(center_crop,[output_width+18,output_height+18]) # Add some wiggle room
+    start_pixel = 10
+    end_pixel = output_width + 10 # Assuming that width and height are same !!
+    centered_image = resized_crop[start_pixel:end_pixel,start_pixel:end_pixel]
+    return centered_image
+
 def get_best_gpu():
     '''Dependency: pynvml (for gpu memory informations)
     return type is integer (gpu_id)
