@@ -22,6 +22,7 @@ def build_parser():
     parser.add_argument('--dataset',type=str,required=True)
     parser.add_argument('--nImages',type=int,default=1000)
     parser.add_argument('--mask',type=str,default='center')
+    parser.add_argument('--run',type=str,default='1')
     args = parser.parse_args()
     return args
 
@@ -31,7 +32,7 @@ def create_database(args):
     structure
 
     """
-    outDir = os.path.join(args.outDir,args.dataset.lower())
+    outDir = os.path.join(args.outDir,args.dataset.lower(),'run_{}'.format(args.run))
 
     if (os.path.exists(outDir)):
         # Remove it
